@@ -15,6 +15,7 @@ const verifyToken = (req, res, next) => {
   const token = tokenWithBearer.split(" ")[1]; 
   jwt.verify(token, ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
+      console.log(err)
       return res.status(401).send({ success: false, message: "unauthorized access" });
     }
     req.user = decoded;

@@ -7,6 +7,8 @@ const SendEmail = require("../utils/SendMail");
 const Verification = require("../Models/VerificationCodeModel");
 const User = require("../Models/UserModel");
 const FormateErrorMessage = require("../utils/FormateErrorMessage");
+const Doctor = require("../Models/DoctorModel");
+const UnlinkFiles = require("../middlewares/FileUpload/UnlinkFiles");
 // Clear Cookie
 
 
@@ -41,7 +43,10 @@ const SignUp = async (req, res) => {
             res.status(201).send({ success: false, error: { message: 'something went wrong' } });
         }
     } catch (error) {
-        const duplicateKeys = FormateErrorMessage(error)
+        let duplicateKeys = []
+        if (error?.keyValue) {
+            duplicateKeys = FormateErrorMessage(error)
+        }
         error.duplicateKeys = duplicateKeys
         res.status(500).send({ success: false, message: 'Internal server error', ...error });
     }
@@ -65,7 +70,7 @@ const SignIn = async (req, res) => {
                     access: user?.access,
                     id: user?._id
                 }
-                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: '5h' });
+                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: '24h' });
                 res.status(200).send({
                     success: true, date: user, token
 
@@ -83,31 +88,35 @@ const SignIn = async (req, res) => {
 
 //update user
 const UpdateUser = async (req, res) => {
-    const { access, role, ...user } = req.body;
+    const id = req?.params?.id
+    const { access, role, email, password, ...data } = req.body;
     try {
-        const uploadMiddleware = uploadFile('images/profile');
-        uploadMiddleware(req, res, async (err) => {
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).send({ success: false, message: 'User not found' });
+        }
+        await uploadFile()(req, res, async function (err) {
+            if (err) {
+                return res.status(400).send({ success: false, message: err.message });
+            }
+
+            const { img } = req.files || {};
             if (err) {
                 return res.status(400).send({ success: false, message: err.message, error: err });
             }
             if (req?.files?.img) {
-                let img = req.files.img[0]?.path
-                const result = await User.updateOne({ _id: id }, {
-                    $set: {
-                        ...user,
-                        img
-                    }
-                })
-                res.send({ success: true, data: result });
-            } else {
-                const result = await User.updateOne({ _id: req?.user?.id }, {
-                    $set: {
-                        ...user,
-                        img
-                    }
-                })
-                res.status(200).send({ success: true, data: result });
+                data.img = req.files.img[0]?.path
+
             }
+            const result = await User.updateOne({ _id: id }, {
+                $set: {
+                    ...data,
+                }
+            })
+            if (user?.img) {
+                UnlinkFiles([user?.img]);
+            }
+            res.status(200).send({ success: true, data: result, message: 'user updated successfully' });
         });
     } catch (error) {
         res.status(500).send({ success: false, error: { error, message: 'Internal server error' } });
@@ -260,6 +269,91 @@ const GetProfile = async (req, res) => {
     }
 }
 
+// create  doctors
+const createDoctor = async (req, res) => {
+    try {
+        await uploadFile()(req, res, async function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(400).send({ success: false, message: err.message });
+            }
+
+            const { img, license } = req.files || {};
+            const doctorData = {
+                ...req.body,
+                img: img?.[0]?.path || '',
+                license: license?.[0]?.path || ''
+            };
+
+            try {
+                const newDoctor = new Doctor(doctorData);
+                await newDoctor.save();
+                res.status(201).send({ success: true, doctor: newDoctor });
+            } catch (error) {
+                let duplicateKeys = [];
+                if (error?.keyValue) {
+                    duplicateKeys = FormateErrorMessage(error);
+                }
+                error.duplicateKeys = duplicateKeys;
+                res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+            }
+        });
+    } catch (error) {
+        res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+    }
+};
+
+// update doctor 
+const updateDoctor = async (req, res) => {
+    const { doctorId } = req.params;
+
+    try {
+        await uploadFile()(req, res, async function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(400).send({ success: false, message: err.message });
+            }
+            const { img, license } = req.files || {};
+            try {
+                const doctor = await Doctor.findById(doctorId);
+                if (!doctor) {
+                    return res.status(404).send({ success: false, message: 'Doctor not found' });
+                }
+                const { role, access, email, password, ...data } = req.body;
+                console.log(data)
+                const filesToDelete = [];
+                if (img) {
+                    if (doctor.img) {
+                        filesToDelete.push(doctor.img);
+                    }
+                    data.img = img[0].path;
+                }
+                if (license) {
+                    if (doctor.license) {
+                        filesToDelete.push(doctor.license);
+                    }
+                    data.license = license[0].path;
+                }
+                const result = await Doctor.updateOne({ _id: doctorId }, { $set: data })
+                UnlinkFiles(filesToDelete);
+
+                res.status(200).send({ success: true, result, message: 'Doctor updated successfully' });
+            } catch (error) {
+                let duplicateKeys = [];
+                if (error?.keyValue) {
+                    duplicateKeys = FormateErrorMessage(error);
+                }
+                error.duplicateKeys = duplicateKeys;
+                res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+            }
+        });
+    } catch (error) {
+        res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+    }
+};
+
+
+
 module.exports = {
     SignUp,
     SignIn,
@@ -268,5 +362,7 @@ module.exports = {
     SendVerifyEmail,
     ResetPassword,
     VerifyCode,
-    GetProfile
+    GetProfile,
+    createDoctor,
+    updateDoctor
 }

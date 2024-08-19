@@ -1,6 +1,19 @@
 const { model, Schema } = require('mongoose');
-const HashPassword = require('../utils/HashPassword'); // Import the HashPassword function
+const HashPassword = require('../utils/HashPassword');
+const TimeSlotSchema = new Schema({
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true }
+}, { _id: false });
 
+const AvailabilitySchema = new Schema({
+    monday: { type: TimeSlotSchema, required: false },
+    tuesday: { type: TimeSlotSchema, required: false },
+    wednesday: { type: TimeSlotSchema, required: false },
+    thursday: { type: TimeSlotSchema, required: false },
+    friday: { type: TimeSlotSchema, required: false },
+    saturday: { type: TimeSlotSchema, required: false },
+    sunday: { type: TimeSlotSchema, required: false },
+}, { _id: false });
 // Define the Doctor schema
 const DoctorModel = new Schema({
     'img': {
@@ -60,6 +73,36 @@ const DoctorModel = new Schema({
         required: true,
         enum: [0, 1, 2],
         default: 1,
+    },
+    "AvailableDays": {
+        type: AvailabilitySchema,
+        required: [true, 'Availability is required'],
+        default: {}
+    },
+    "availableFor": {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE'],
+        required: [true, 'availableFor is required'],
+    },
+    "license": {
+        type: String,
+        required: [true, 'license is required'],
+    },
+    "specialization": {
+        type: String,
+        required: [true, 'specialization is required'],
+    },
+    "experience": {
+        type: String,
+        required: [true, 'experience is required'],
+    },
+    "educational_background": {
+        type: String,
+        required: [true, 'Educational Background is required'],
+    },
+    "current_affiliation": {
+        type: String,
+        required: [true, 'Current Affiliation is required'],
     },
 }, { timestamps: true });
 

@@ -7,10 +7,12 @@ const express = require("express")
 const port = PORT || 5000;
 const AuthRoute = require("./src/routes/AuthenticationRoute");
 const globalErrorHandler = require("./src/utils/globalErrorHandler");
+const DoctorsRoute = require("./src/routes/DoctorsRoute");
 applyMiddleware(app);
 
 //routes
-app.use('/auth',AuthRoute)
+app.use('/auth', AuthRoute)
+app.use('/doctors', DoctorsRoute)
 
 app.get("/", (req, res) => {
   res.send("server is running....");
@@ -26,10 +28,10 @@ app.all("*", (req, res, next) => {
 // error handling middleware
 app.use(globalErrorHandler);
 
-const main=async ()=>{
-    await connectDB()
-    app.listen(port,'192.168.10.6', () => {
-        console.log(`Server is running on port ${port}`);
-    });
+const main = async () => {
+  await connectDB()
+  app.listen(port, '192.168.10.6', () => {
+    console.log(`Server is running on port ${port}`);
+  });
 }
 main()
