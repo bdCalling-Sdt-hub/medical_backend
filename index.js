@@ -8,11 +8,13 @@ const port = PORT || 5000;
 const AuthRoute = require("./src/routes/AuthenticationRoute");
 const globalErrorHandler = require("./src/utils/globalErrorHandler");
 const DoctorsRoute = require("./src/routes/DoctorsRoute");
+const UsersRoute = require("./src/routes/UsersRoutes");
 applyMiddleware(app);
 
 //routes
 app.use('/auth', AuthRoute)
 app.use('/doctors', DoctorsRoute)
+app.use('/users', UsersRoute)
 
 app.get("/", (req, res) => {
   res.send("server is running....");
