@@ -83,10 +83,22 @@ const GetRecommendedDoctor = async (req, res) => {
         res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
     }
 }
+// get single doctor
+const GetSingleDoctor = async (req, res) => {
+    const { doctorId } = req.params
+    try {
+        const result = await Doctor.findOne({ _id: doctorId })
+        res.status(200).send({ success: true, data: result });
+    } catch (error) {
+        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+    }
+
+}
 module.exports = {
     GetAllDoctors,
     DeleteDoctor,
     BlockDoctor,
     GetPopularDoctor,
-    GetRecommendedDoctor
+    GetRecommendedDoctor,
+    GetSingleDoctor
 }
