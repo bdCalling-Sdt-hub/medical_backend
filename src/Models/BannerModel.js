@@ -2,8 +2,9 @@ const { model, Schema } = require('mongoose');
 const BannerModel = new Schema({
     order: {
         type: String,
-        required: [true, 'banner is required'],
-        unique: true
+        required: [true, 'Order is required'],
+        unique: true,
+        default: 0
     },
     img: {
         type: String,
@@ -11,10 +12,8 @@ const BannerModel = new Schema({
     },
 })
 BannerModel.pre('save', async function (next) {
-    if (this.isNew) {
-        const totalBanners = await this.constructor.countDocuments();
-        this.order = totalBanners + 1;
-    }
+    const totalBanners = await Banner.countDocuments();
+    this.order = totalBanners + 1;
     next();
 });
 
