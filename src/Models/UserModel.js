@@ -38,7 +38,7 @@ const UserModel = new Schema({
         required: true,
         default: 'credential'
     },
-    "Gender": {
+    "gender": {
         type: String,
         required: false,
         enum: ['male', 'female'],

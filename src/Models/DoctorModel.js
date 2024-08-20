@@ -51,7 +51,7 @@ const DoctorModel = new Schema({
         required: true,
         default: 'credential'
     },
-    "Gender": {
+    "gender": {
         type: String,
         required: false,
         enum: ['male', 'female'],
@@ -74,12 +74,12 @@ const DoctorModel = new Schema({
         enum: [0, 1, 2],
         default: 1,
     },
-    "AvailableDays": {
+    "available_days": {
         type: AvailabilitySchema,
         required: [true, 'Availability is required'],
         default: {}
     },
-    "availableFor": {
+    "available_for": {
         type: String,
         enum: ['ONLINE', 'OFFLINE'],
         required: [true, 'availableFor is required'],
