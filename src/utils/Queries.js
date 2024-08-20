@@ -20,7 +20,7 @@ const Queries = async (collectionModel, queryKeys, searchKeys) => {
         const itemsPerPage = parseInt(limit) || 10;
         const currentPage = parseInt(page) || 1;
         if (isNaN(Number(page))) {
-            const result = await collectionModel.find({})
+            const result = await collectionModel.find(query)
             return {
                 success: true,
                 data: result,

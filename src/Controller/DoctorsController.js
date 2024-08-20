@@ -1,9 +1,13 @@
 const Doctor = require("../Models/DoctorModel");
+const Queries = require("../utils/Queries");
 // get all doctors
 const GetAllDoctors = async (req, res) => {
     try {
-        const result = await Doctor.find();
-        res.status(200).send({ success: true, data: result });
+        const { search, ...queryKeys } = req.query;
+        const searchKey = {}
+        if (search) searchKey.name = search
+        const result = await Queries(Doctor, queryKeys, searchKey);
+        res.status(200).send({ ...result });
     } catch (err) {
         res.status(500).send({ success: false, error: { message: 'Internal server error', error: err } });
     }

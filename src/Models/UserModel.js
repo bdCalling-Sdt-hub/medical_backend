@@ -64,6 +64,7 @@ const UserModel = new Schema({
 }, { timestamps: true });
 
 UserModel.pre('save', async function (next) {
+    this.email = this.email.toLowerCase();
     if (this.isModified('password')) {
         try {
             this.password = await HashPassword(this.password);
