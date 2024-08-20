@@ -61,6 +61,10 @@ const UserModel = new Schema({
         enum: [0, 1, 2],
         default: 0,
     },
+    "category": {
+        type: [String],
+        required: [true, 'category is required'],
+    },
 }, { timestamps: true });
 
 UserModel.pre('save', async function (next) {

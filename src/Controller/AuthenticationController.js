@@ -10,6 +10,8 @@ const FormateErrorMessage = require("../utils/FormateErrorMessage");
 const Doctor = require("../Models/DoctorModel");
 const UnlinkFiles = require("../middlewares/FileUpload/UnlinkFiles");
 const Queries = require("../utils/Queries");
+const { promises } = require("fs");
+const Category = require("../Models/CategoryModel");
 // Clear Cookie
 
 
@@ -21,11 +23,23 @@ const SignUp = async (req, res) => {
             return res.status(201).send({ success: false, error: { message: "confirm password doesn't match" } });
         }
         let existingAdmin;
+        let category;
         if (req.body?.role) {
-            existingAdmin = await Queries(User, {}, { role: req.body.role })
+            [category, existingAdmin] = await Promise.all([
+                Category.find(),
+                Queries(User, {}, { role: req.body.role })
+            ]);
+        }
+        else {
+            category = await Category.find()
         }
         if (existingAdmin?.data?.length > 0) {
             return res.status(201).send({ success: false, message: "admin already exist" });
+        }
+        if (category) {
+            user.category = category?.[0]?.name
+        } else {
+            user.category = []
         }
         const newUser = new User({ ...user, password });
         const savedUser = await newUser.save();

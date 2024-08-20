@@ -104,6 +104,16 @@ const DoctorModel = new Schema({
         type: String,
         required: [true, 'Current Affiliation is required'],
     },
+    "rating": {
+        type: String,
+        required: [true, 'Rating is required'],
+        default: 0,
+    },
+    "total_rated": {
+        type: Number,
+        required: [true, 'Rating is required'],
+        default: 0,
+    },
 }, { timestamps: true });
 
 DoctorModel.pre('save', async function (next) {

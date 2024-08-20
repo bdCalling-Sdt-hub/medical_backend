@@ -31,7 +31,7 @@ const Queries = async (collectionModel, queryKeys, searchKeys) => {
                     .sort(sortOrder)
                     .skip((currentPage - 1) * itemsPerPage)
                     .limit(itemsPerPage),
-                collectionModel.countDocuments()
+                collectionModel.countDocuments(query)
             ]);
 
             return {
