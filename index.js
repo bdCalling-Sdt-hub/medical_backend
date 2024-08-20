@@ -10,6 +10,7 @@ const globalErrorHandler = require("./src/utils/globalErrorHandler");
 const DoctorsRoute = require("./src/routes/DoctorsRoute");
 const UsersRoute = require("./src/routes/UsersRoutes");
 const CategoryRoutes = require("./src/routes/CategoryRoutes");
+const BannerRoute = require("./src/routes/BannerRoute");
 applyMiddleware(app);
 
 //routes
@@ -17,6 +18,7 @@ app.use('/auth', AuthRoute)
 app.use('/doctors', DoctorsRoute)
 app.use('/users', UsersRoute)
 app.use('/category', CategoryRoutes)
+app.use('/banner', BannerRoute)
 
 app.get("/", (req, res) => {
   res.send("server is running....");

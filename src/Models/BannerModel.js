@@ -12,10 +12,11 @@ const BannerModel = new Schema({
 })
 BannerModel.pre('save', async function (next) {
     if (this.isNew) {
-        const lastBanner = await this.constructor.findOne().sort('-order');
-        this.order = lastBanner ? lastBanner.order + 1 : 1;
+        const totalBanners = await this.constructor.countDocuments();
+        this.order = totalBanners + 1;
     }
     next();
 });
+
 const Banner = model('banner', BannerModel);
 module.exports = Banner
