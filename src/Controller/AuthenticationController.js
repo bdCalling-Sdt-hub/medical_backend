@@ -65,7 +65,7 @@ const SignUp = async (req, res) => {
 const SignIn = async (req, res) => {
     try {
         const { email, password } = req.body
-        console.log(req.body)
+        //console.log(req.body)
         const user = await User.findOne({ email: email })
         if (user) {
             const result = await bcrypt.compare(password, user?.password);
@@ -136,13 +136,13 @@ const ChangePassword = async (req, res) => {
     try {
         const { old_Password, password } = req.body;
         const { id } = req?.user
-        console.log(id, { old_Password, password })
+        //console.log(id, { old_Password, password })
         if (old_Password === password) {
             return res.status(403).send({ success: false, error: { message: "new password cannot be your old password", } });
         }
         const user = await User.findOne({ _id: id })
         const CheckPassword = await bcrypt.compare(old_Password, user?.password);
-        console.log(CheckPassword)
+        //console.log(CheckPassword)
         if (CheckPassword) {
             const hash_pass = await HashPassword(password)
             const result = await User.updateOne({ _id: id }, {
@@ -198,7 +198,7 @@ const SendVerifyEmail = async (req, res) => {
                 <h1>medical</h1>
                 `,
             })
-            console.log(email)
+            //console.log(email)
             res.status(200).send({ success: true, message: `verification code has been sent to ${email}`, });
         }
     } catch (error) {
@@ -238,7 +238,7 @@ const ResetPassword = async (req, res) => {
                 return res.status(201).send({ success: false, error: { message: "confirm password doesn't match" } });
             }
             const hash_pass = await HashPassword(password)
-            console.log(hash_pass)
+            //console.log(hash_pass)
             const result = await User.updateOne({ email: verify?.email }, {
                 $set: {
                     password: hash_pass
@@ -328,7 +328,7 @@ const updateDoctor = async (req, res) => {
                     return res.status(404).send({ success: false, message: 'Doctor not found' });
                 }
                 const { role, access, email, password, ...data } = req.body;
-                console.log(data)
+                //console.log(data)
                 const filesToDelete = [];
                 if (img) {
                     if (doctor.img) {

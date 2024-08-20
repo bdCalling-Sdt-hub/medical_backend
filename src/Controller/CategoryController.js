@@ -1,4 +1,5 @@
 const uploadFile = require("../middlewares/FileUpload/FileUpload");
+const UnlinkFiles = require("../middlewares/FileUpload/UnlinkFiles");
 const Category = require("../Models/CategoryModel");
 const FormateErrorMessage = require("../utils/FormateErrorMessage");
 const Queries = require("../utils/Queries");
@@ -49,4 +50,61 @@ const CreateCategory = async (req, res) => {
         res.status(500).send({ success: false, error: { message: 'Internal server error', error: error } });
     }
 }
-module.exports = { GetCategories, CreateCategory }
+
+//delete category
+const DeleteCategory = async (req, res) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(401).send({ message: "unauthorized access" });
+    }
+    try {
+        const { categoryId } = req.params;
+        const category = await Category.findById(categoryId);
+        if (!category) {
+            return res.status(404).send({ success: false, message: 'Category not found' });
+        }
+        const result = await Category.deleteOne({ _id: categoryId });
+        if (category.img) {
+            UnlinkFiles([category.img]);
+        }
+        res.status(200).send({ success: true, data: result, message: 'category deleted successfully' });
+    } catch (error) {
+        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+    }
+}
+// update Category
+const UpdateCategory = async (req, res) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(401).send({ message: "unauthorized access" });
+    }
+    try {
+        const { categoryId } = req.params;
+        const category = await Category.findById(categoryId);
+        if (!category) {
+            return res.status(404).send({ success: false, message: 'Category not found' });
+        }
+        await uploadFile()(req, res, async function (err) {
+            if (err) {
+                return res.status(400).send({ success: false, message: err.message });
+            }
+            const { img } = req.files || {};
+            const { name } = req.body
+            if (img) {
+                UnlinkFiles([category.img])
+            }
+            try {
+                const result = await Category.updateOne({ _id: categoryId }, {
+                    $set: {
+                        img: img?.[0]?.path || category.img,
+                        name
+                    }
+                });
+                res.status(200).send({ success: true, message: 'Category Updated successfully', data: result });
+            } catch (error) {
+                res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+            }
+        });
+    } catch (error) {
+        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+    }
+}
+module.exports = { GetCategories, CreateCategory, DeleteCategory,UpdateCategory }

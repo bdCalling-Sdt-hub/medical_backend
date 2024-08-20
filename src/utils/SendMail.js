@@ -18,7 +18,7 @@ const SendEmail = async (mailData) => {
     try {
         return await transporter.sendMail(mailOptions)
     } catch (error) {
-        // console.log(error)
+        // //console.log(error)
     }
 }
 module.exports = SendEmail
