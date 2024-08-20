@@ -76,8 +76,53 @@ const UpdateBanner = async (req, res) => {
         res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
     }
 }
+// delete banner
+const DeleteBanner = async (req, res) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(401).send({ message: "unauthorized access" });
+    }
+    try {
+        const { bannerId } = req.params;
+        const banner = await Banner.findById(bannerId);
+        if (!banner) {
+            return res.status(404).send({ success: false, message: 'banner not found' });
+        }
+        const result = await Banner.deleteOne({ _id: bannerId });
+        if (banner.img) {
+            UnlinkFiles([banner.img]);
+        }
+        res.status(200).send({ success: true, data: result, message: 'banner deleted successfully' });
+    } catch (error) {
+        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+    }
+}
+//Update Banner Order 
+const UpdateBannerOrder = async (req, res) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(401).send({ message: "unauthorized access" });
+    }
+    try {
+        const data = req.body;
+        const updatePromises = data.map(banner =>
+            Banner.updateOne({ _id: banner.id }, { order: banner.order })
+        );
+        const update = await Promise.all(updatePromises);
+        const matchedCount = update.reduce((acc, result) => acc + result.matchedCount, 0);
+        const modifiedCount = update.reduce((acc, result) => acc + result.modifiedCount, 0);
+        const result = {
+            success: true,
+            matchedCount,
+            modifiedCount,
+        };
+        res.status(200).send({ success: true, data: result, message: 'Banner order updated successfully' });
+    } catch (error) {
+        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+    }
+}
 module.exports = {
     CreateBanner,
     GetAllBanner,
-    UpdateBanner
+    UpdateBanner,
+    DeleteBanner,
+    UpdateBannerOrder
 }

@@ -107,4 +107,5 @@ const UpdateCategory = async (req, res) => {
         res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
     }
 }
+
 module.exports = { GetCategories, CreateCategory, DeleteCategory, UpdateCategory }
