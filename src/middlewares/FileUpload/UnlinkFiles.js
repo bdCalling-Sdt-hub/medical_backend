@@ -9,7 +9,7 @@ const UnlinkFiles = async (filesToDelete) => {
                 console.error('Error deleting file:', err);
                 return;
             }
-            //console.log('File deleted successfully');
+            console.log('File deleted successfully');
         });
     })
 }

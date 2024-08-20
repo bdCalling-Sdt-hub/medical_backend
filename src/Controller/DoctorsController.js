@@ -62,12 +62,12 @@ const GetPopularDoctor = async (req, res) => {
         queryKeys.rating = { $gte: 4.5 }
         if (search) searchKey.name = search
         const result = await Queries(Doctor, queryKeys, searchKey);
-        // const result = await Doctor.find({ block: false, rating: { $gte: 4.5 } }).sort({ rating: 1 });
         res.status(200).send({ success: true, ...result });
     } catch (error) {
         res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
     }
 }
+// get Recommended doctor
 const GetRecommendedDoctor = async (req, res) => {
     try {
         const { search, ...queryKeys } = req.query;
@@ -75,9 +75,9 @@ const GetRecommendedDoctor = async (req, res) => {
         const searchKey = {}
         queryKeys.block = false
         queryKeys.specialization = { $in: [...specialization] }
+        queryKeys.rating = { $gte: 4.5 }
         if (search) searchKey.name = search
         const result = await Queries(Doctor, queryKeys, searchKey);
-        // const result = await Doctor.find({ block: false, rating: { $gte: 4.5 } }).sort({ rating: 1 });
         res.status(200).send({ success: true, ...result });
     } catch (error) {
         res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
