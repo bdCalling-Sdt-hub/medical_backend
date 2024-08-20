@@ -88,10 +88,10 @@ const UpdateCategory = async (req, res) => {
             }
             const { img } = req.files || {};
             const { name } = req.body
-            if (img) {
-                UnlinkFiles([category.img])
-            }
             try {
+                if (img) {
+                    UnlinkFiles([category.img])
+                }
                 const result = await Category.updateOne({ _id: categoryId }, {
                     $set: {
                         img: img?.[0]?.path || category.img,
@@ -107,4 +107,4 @@ const UpdateCategory = async (req, res) => {
         res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
     }
 }
-module.exports = { GetCategories, CreateCategory, DeleteCategory,UpdateCategory }
+module.exports = { GetCategories, CreateCategory, DeleteCategory, UpdateCategory }
