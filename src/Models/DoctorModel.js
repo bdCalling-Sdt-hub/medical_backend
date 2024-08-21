@@ -138,7 +138,7 @@ const DoctorModel = new Schema({
         required: [true, 'Current Affiliation is required'],
     },
     "rating": {
-        type: String,
+        type: Number,
         required: [true, 'Rating is required'],
         default: 0,
     },

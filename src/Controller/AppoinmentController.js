@@ -78,10 +78,18 @@ const UpdateAppointments = async (req, res) => {
 const GetAllAppointments = async (req, res) => {
     try {
         const { id } = req.user
-        const { search, ...queryKeys } = req.query;
+        const { search, type, status, ...queryKeys } = req.query;
         queryKeys.userId = id
         const searchKey = {}
         if (search) searchKey.name = search
+
+        if (status) {
+            queryKeys.status = status
+        } else if (type && type === 'past') {
+            queryKeys.date = { $lt: new Date().toISOString() }
+        } else {//if (type && type === 'upcoming')
+            queryKeys.date = { $gte: new Date().toISOString() }
+        }
         const result = await Queries(Appointment, queryKeys, searchKey, populatePath = "doctorId", selectFields = "name email phone location _id img specialization");
         res.status(200).send({ ...result });
     } catch (err) {
