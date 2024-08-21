@@ -14,6 +14,8 @@ const BannerRoute = require("./src/routes/BannerRoute");
 const FaqRoutes = require("./src/routes/FaqRoutes");
 const SettingsRoutes = require("./src/routes/SettingsRoutes");
 const FavoriteDoctorRoutes = require("./src/routes/FavoriteDoctorRoutes");
+const ReviewRoutes = require("./src/routes/ReviewRoutes");
+const AppointmentRoute = require("./src/routes/AppointmentRoute");
 applyMiddleware(app);
 
 //routes
@@ -25,6 +27,8 @@ app.use('/banner', BannerRoute)
 app.use('/faq', FaqRoutes)
 app.use('/settings', SettingsRoutes)
 app.use('/favorite', FavoriteDoctorRoutes)
+app.use('/review', ReviewRoutes)
+app.use('/appointment', AppointmentRoute)
 
 app.get("/", (req, res) => {
   res.send("server is running....");

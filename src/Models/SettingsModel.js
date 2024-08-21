@@ -10,7 +10,7 @@ const SettingsSchema = new Schema({
         type: String,
         required: [true, 'value is required']
     }
-})
+}, { timestamps: true });
 
 const SettingsModel = model('settings', SettingsSchema);
 module.exports = SettingsModel

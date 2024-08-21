@@ -1,18 +1,39 @@
 const { model, Schema } = require('mongoose');
 const HashPassword = require('../utils/HashPassword');
-const TimeSlotSchema = new Schema({
-    startTime: { type: String, required: true },
-    endTime: { type: String, required: true }
-}, { _id: false });
+// const TimeSlotSchema = new Schema({
+//     startTime: { type: String, required: true },
+//     endTime: { type: String, required: true }
+// }, { _id: false });
 
 const AvailabilitySchema = new Schema({
-    monday: { type: TimeSlotSchema, required: false },
-    tuesday: { type: TimeSlotSchema, required: false },
-    wednesday: { type: TimeSlotSchema, required: false },
-    thursday: { type: TimeSlotSchema, required: false },
-    friday: { type: TimeSlotSchema, required: false },
-    saturday: { type: TimeSlotSchema, required: false },
-    sunday: { type: TimeSlotSchema, required: false },
+    monday: {
+        type: [String],
+        required: false
+    },
+    tuesday: {
+        type: [String],
+        required: false
+    },
+    wednesday: {
+        type: [String],
+        required: false
+    },
+    thursday: {
+        type: [String],
+        required: false
+    },
+    friday: {
+        type: [String],
+        required: false
+    },
+    saturday: {
+        type: [String],
+        required: false
+    },
+    sunday: {
+        type: [String],
+        required: false
+    },
 }, { _id: false });
 // Define the Doctor schema
 const DoctorModel = new Schema({
@@ -77,7 +98,19 @@ const DoctorModel = new Schema({
     "available_days": {
         type: AvailabilitySchema,
         required: [true, 'Availability is required'],
-        default: {}
+        default: {},
+        validate: {
+            validator: function (value) {
+                let hasAvailableDay = true;
+                Object.keys(value).forEach(key => {
+                    if (value[key] && value[key].length > 0) {
+                        hasAvailableDay = false;
+                    }
+                })
+                return hasAvailableDay;
+            },
+            message: 'At least one available day with non-empty time slots is required'
+        }
     },
     "available_for": {
         type: String,

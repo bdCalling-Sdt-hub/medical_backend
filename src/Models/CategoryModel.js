@@ -9,6 +9,6 @@ const CategoryModel = new Schema({
         type: String,
         required: [true, 'image is required']
     },
-})
+}, { timestamps: true });
 const Category = model('category', CategoryModel);
 module.exports = Category

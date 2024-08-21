@@ -12,6 +12,7 @@ const UnlinkFiles = require("../middlewares/FileUpload/UnlinkFiles");
 const Queries = require("../utils/Queries");
 const { promises } = require("fs");
 const Category = require("../Models/CategoryModel");
+const { generateTimeSlots } = require("../utils/GenarateTime");
 // Clear Cookie
 
 
@@ -299,10 +300,23 @@ const createDoctor = async (req, res) => {
                 console.error(err);
                 return res.status(400).send({ success: false, message: err.message });
             }
-
+            const { available_days, ...otherInfo } = req.body
             const { img, license } = req.files || {};
+            if (!available_days || Object.keys(available_days).length === 0) {
+                return res.status(400).send({ success: false, message: 'available days are required' });
+            }
+            let data = {}
+            Object.keys(available_days).forEach((key) => {
+                if (!available_days[key]?.startTime, !available_days[key]?.endTime) {
+                    res.status(400).send({ success: false, message: 'startTime and endTime are required' });
+                }
+                const timeSlots = generateTimeSlots(req?.body?.available_days[key]?.startTime, req?.body?.available_days[key]?.endTime)
+                data[key] = timeSlots
+            })
+
             const doctorData = {
-                ...req.body,
+                ...otherInfo,
+                available_days: data,
                 img: img?.[0]?.path || '',
                 license: license?.[0]?.path || ''
             };
@@ -335,13 +349,24 @@ const updateDoctor = async (req, res) => {
                 console.error(err);
                 return res.status(400).send({ success: false, message: err.message });
             }
+            const { role, access, email, password, available_days, ...otherInfo } = req.body;
             const { img, license } = req.files || {};
             try {
                 const doctor = await Doctor.findById(doctorId);
                 if (!doctor) {
                     return res.status(404).send({ success: false, message: 'Doctor not found' });
                 }
-                const { role, access, email, password, ...data } = req.body;
+                if (!available_days || Object.keys(available_days).length === 0) {
+                    return res.status(400).send({ success: false, message: 'available days are required' });
+                }
+                let data = {}
+                Object.keys(available_days).forEach((key) => {
+                    if (!available_days[key]?.startTime, !available_days[key]?.endTime) {
+                        res.status(400).send({ success: false, message: 'startTime and endTime are required' });
+                    }
+                    const timeSlots = generateTimeSlots(req?.body?.available_days[key]?.startTime, req?.body?.available_days[key]?.endTime)
+                    data[key] = timeSlots
+                })
                 //console.log(data)
                 const filesToDelete = [];
                 if (img) {
@@ -356,7 +381,12 @@ const updateDoctor = async (req, res) => {
                     }
                     data.license = license[0].path;
                 }
-                const result = await Doctor.updateOne({ _id: doctorId }, { $set: data })
+                const result = await Doctor.updateOne({ _id: doctorId }, {
+                    $set: {
+                        ...otherInfo,
+                        available_days: data,
+                    }
+                })
                 UnlinkFiles(filesToDelete);
 
                 res.status(200).send({ success: true, result, message: 'Doctor updated successfully' });

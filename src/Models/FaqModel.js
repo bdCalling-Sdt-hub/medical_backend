@@ -9,6 +9,6 @@ const FaqSchema = new Schema({
         type: String,
         required: [true, 'answer is required']
     }
-});
+}, { timestamps: true });
 const FaqModel = model('faq', FaqSchema);
 module.exports = FaqModel

@@ -22,11 +22,17 @@ const Queries = async (collectionModel, queryKeys, searchKeys, populatePath, sel
             let queryExec = collectionModel.find(query);
 
             if (populatePath) {
-                queryExec = queryExec.populate(populatePath);
+                if (selectFields) {
+                    queryExec = queryExec.populate({
+                        path: populatePath,
+                        select: selectFields
+                    });
+                } else {
+                    queryExec = queryExec.populate(populatePath);
+                }
+
             }
-            if (selectFields) {
-                queryExec = queryExec.select(selectFields);
-            }
+
 
             const result = await queryExec;
 
@@ -40,12 +46,15 @@ const Queries = async (collectionModel, queryKeys, searchKeys, populatePath, sel
                 .skip((currentPage - 1) * itemsPerPage)
                 .limit(itemsPerPage);
             if (populatePath) {
-                queryExec = queryExec.populate(populatePath);
-            }
+                if (selectFields) {
+                    queryExec = queryExec.populate({
+                        path: populatePath,
+                        select: selectFields
+                    });
+                } else {
+                    queryExec = queryExec.populate(populatePath);
+                }
 
-            // Select specific fields if selectFields is provided
-            if (selectFields) {
-                queryExec = queryExec.select(selectFields);
             }
 
             const [result, totalItems] = await Promise.all([
@@ -66,7 +75,6 @@ const Queries = async (collectionModel, queryKeys, searchKeys, populatePath, sel
         }
 
     } catch (error) {
-        // Improved error handling
         throw new Error(error.message || "An error occurred while executing the query");
     }
 };

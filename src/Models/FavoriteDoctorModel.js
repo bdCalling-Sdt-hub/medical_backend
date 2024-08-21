@@ -10,7 +10,7 @@ const SettingsSchema = new Schema({
         required: [true, 'userId is required'],
         ref: 'User'
     }
-})
+}, { timestamps: true });
 
 const FavoriteDoctorModel = model('favoriteDoctor', SettingsSchema);
 module.exports = FavoriteDoctorModel

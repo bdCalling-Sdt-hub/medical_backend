@@ -10,7 +10,7 @@ const BannerModel = new Schema({
         type: String,
         required: [true, 'image is required']
     },
-})
+}, { timestamps: true })
 BannerModel.pre('save', async function (next) {
     const totalBanners = await Banner.countDocuments();
     this.order = totalBanners + 1;

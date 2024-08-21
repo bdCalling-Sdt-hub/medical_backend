@@ -10,7 +10,7 @@ const GetAllDoctors = async (req, res) => {
         const result = await Queries(Doctor, queryKeys, searchKey);
         res.status(200).send({ ...result });
     } catch (err) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: err } });
+        res.status(500).send({ success: false,  message: 'Internal server error', ...err  });
     }
 };
 //delete doctors
