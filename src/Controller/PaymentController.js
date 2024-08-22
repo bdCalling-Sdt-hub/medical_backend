@@ -258,23 +258,121 @@ const GetDoctorPaymentHistory = async (req, res) => {
 // see available payment 
 const GetAvailablePayment = async (req, res) => {
     try {
-        const { search, ...queryKeys } = req.query;
-        const searchKey = {}
+        const { search, page, limit, sort } = req.query;
+        const queryKeys = { ...req.query };
+
         if (req.user?.role === "USER") {
-            return res.status(401).send({ success: false, message: "unauthorized access" })
+            return res.status(401).send({ success: false, message: "Unauthorized access" });
         }
         if (req?.user?.role !== "ADMIN") {
-            queryKeys.doctorId = req?.user?.id
-            queryKeys.payment_doctor = false
+            queryKeys.doctorId = req?.user?.id;
+            queryKeys.payment_doctor = false;
+        }
+        let matchCondition = {
+            ...queryKeys,
+        };
+        delete matchCondition.page;
+        delete matchCondition.limit;
+        delete matchCondition.sort;
+
+        if (search) {
+            matchCondition.$or = [
+                { "doctor.name": { $regex: search, $options: 'i' } },
+                { "user.name": { $regex: search, $options: 'i' } }
+            ];
+        }
+        let aggregationPipeline = [
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: "$doctorId",
+                    totalAmount: { $sum: "$amount" },
+                    payments: { $push: "$$ROOT" },
+                }
+            },
+            {
+                $lookup: {
+                    from: 'doctors',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'doctor'
+                }
+            },
+            { $unwind: "$doctor" },
+            {
+                $project: {
+                    _id: 0,
+                    doctorId: "$_id",
+                    doctorName: "$doctor.name",
+                    totalAmount: 1,
+                    payments: 1
+                }
+            }
+        ];
+        if (sort) {
+            const sortDirection = sort === 'desc' ? -1 : 1;
+            aggregationPipeline.push({
+                $sort: { totalAmount: sortDirection }
+            });
         }
 
-        // await PaymentModel.updateMany({ doctorId: doctorId, payment_doctor: false },
-        const result = await Queries(PaymentModel, queryKeys, searchKey);
-        res.status(200).send({ success: true, message: "Available Payment", data: result })
+        let totalRecords = await PaymentModel.aggregate([
+            { $match: matchCondition },
+            { $group: { _id: "$doctorId" } }
+        ]);
+
+        if (page && limit) {
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+            const totalPages = Math.ceil(totalRecords.length / parseInt(limit));
+
+            aggregationPipeline.push({ $skip: skip });
+            aggregationPipeline.push({ $limit: parseInt(limit) });
+
+            const result = await PaymentModel.aggregate(aggregationPipeline);
+
+            res.status(200).send({
+                success: true,
+                message: "Available Payment",
+                data: result,
+                pagination: {
+                    totalRecords: totalRecords.length,
+                    totalPages: totalPages,
+                    currentPage: parseInt(page),
+                    limit: parseInt(limit)
+                }
+            });
+        } else {
+            const result = await PaymentModel.aggregate(aggregationPipeline);
+            res.status(200).send({
+                success: true,
+                message: "Available Payment",
+                data: result
+            });
+        }
     } catch (error) {
-        res.status(500).send({ success: false, message: "Internal server error", ...error })
+        res.status(500).send({ success: false, message: "Internal server error", ...error });
     }
-}
-module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory,GetAvailablePayment }
+};
+
+// const GetAvailablePayment = async (req, res) => {
+//     try {
+//         const { search, ...queryKeys } = req.query;
+//         const searchKey = {}
+//         if (req.user?.role === "USER") {
+//             return res.status(401).send({ success: false, message: "unauthorized access" })
+//         }
+//         if (req?.user?.role !== "ADMIN") {
+//             queryKeys.doctorId = req?.user?.id
+//             queryKeys.payment_doctor = false
+//         }
+
+//         // await PaymentModel.updateMany({ doctorId: doctorId, payment_doctor: false },
+//         const result = await Queries(PaymentModel, queryKeys, searchKey);
+//         res.status(200).send({ success: true, message: "Available Payment", data: result })
+//     } catch (error) {
+//         res.status(500).send({ success: false, message: "Internal server error", ...error })
+//     }
+// }
+module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment }
 
 
