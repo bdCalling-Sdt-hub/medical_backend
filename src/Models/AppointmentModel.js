@@ -32,7 +32,18 @@ const AppointmentSchema = new Schema({
         type: String,
         required: [true, 'Status Id is required'],
         default: 'pending',
-        enum: ['pending', 'accepted', 'rejected']
+        enum: ['pending', 'accepted', 'rejected','completed']
+    },
+    reason: {
+        type: String,
+        required: [true, 'Reason is required']
+    },
+    desc: {
+        type: String,
+        required: [true, 'Description is required']
+    },
+    prescription: {
+        type: [String],
     },
     review: {
         type: Boolean,

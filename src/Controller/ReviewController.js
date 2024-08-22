@@ -1,6 +1,7 @@
 const Appointment = require("../Models/AppointmentModel");
 const Doctor = require("../Models/DoctorModel");
 const Review = require("../Models/ReviewModel");
+const Queries = require("../utils/Queries");
 
 // Create Review 
 const CreateReview = async (req, res) => {
@@ -26,4 +27,42 @@ const CreateReview = async (req, res) => {
         res.status(500).send({ success: false, ...error, message: 'Internal Server Error' })
     }
 }
-module.exports = { CreateReview }
+// delete review
+const DeleteReview = async (req, res) => {
+    try {
+        const { id } = req.user
+        const { reviewId } = req.params
+        if (req.user.role !== 'ADMIN') {
+            const result = await Review.deleteOne({ _id: reviewId, sender: id })
+            if (result.deletedCount <= 0) {
+                return res.status(404).send({ success: false, message: 'Review Not Found' })
+            }
+            res.status(200).send({ success: true, data: result, message: 'Review Deleted Successfully' })
+        } else {
+            const result = await Review.deleteOne({ _id: reviewId })
+            if (result.deletedCount <= 0) {
+                return res.status(404).send({ success: false, message: 'Review Not Found' })
+            }
+            res.status(200).send({ success: true, data: result, message: 'Review Deleted Successfully' })
+        }
+    } catch (error) {
+        res.status(500).send({ success: false, message: 'Internal server error', ...error })
+    }
+}
+// get Doctor Review
+const GetAllReview = async (req, res) => {
+    try {
+        const { id } = req.user
+        const { search, receiverId,...queryKeys } = req.query;
+        const searchKey = {}
+        if (search) searchKey.name = search
+        if (req?.user?.role !== 'ADMIN') {
+            queryKeys.receiver = receiverId
+        }
+        const result = await Queries(Review, queryKeys, searchKey, populatePath = "receiver", selectFields = "name email phone location _id img specialization rating total_rated");
+        return res.status(200).send({ success: true, data: result })
+    } catch (error) {
+        res.status(500).send({ success: false, message: 'Internal server error', ...error })
+    }
+}
+module.exports = { CreateReview, DeleteReview, GetAllReview }

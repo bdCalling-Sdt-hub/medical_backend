@@ -10,7 +10,6 @@ const FormateErrorMessage = require("../utils/FormateErrorMessage");
 const Doctor = require("../Models/DoctorModel");
 const UnlinkFiles = require("../middlewares/FileUpload/UnlinkFiles");
 const Queries = require("../utils/Queries");
-const { promises } = require("fs");
 const Category = require("../Models/CategoryModel");
 const { generateTimeSlots } = require("../utils/GenarateTime");
 // Clear Cookie
@@ -89,11 +88,45 @@ const SignIn = async (req, res) => {
                     email: user?.email,
                     phone: user?.phone,
                     verified: user?.verified,
+                    name: user?.name,
                     role: user?.role,
                     access: user?.access,
                     id: user?._id
                 }
-                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: '24h' });
+                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
+                res.status(200).send({
+                    success: true, date: user, token
+
+                });
+            } else {
+                res.status(400).send({ success: false, error: { message: "Wrong Credentials" } });
+            }
+        } else {
+            res.status(400).send({ success: false, message: "user doesn't exist" });
+        }
+    } catch (error) {
+        res.status(500).send({ success: false, message: 'Internal server error', error: { error: error, message: 'Internal server error' } });
+    }
+}
+// login  doctor
+const DoctorSignIn = async (req, res) => {
+    try {
+        const { email, password } = req.body
+        //console.log(req.body)
+        const user = await Doctor.findOne({ email: email })
+        if (user) {
+            const result = await bcrypt.compare(password, user?.password);
+            if (result) {
+                const userData = {
+                    email: user?.email,
+                    phone: user?.phone,
+                    verified: user?.verified,
+                    name: user?.name,
+                    role: user?.role,
+                    access: user?.access,
+                    id: user?._id
+                }
+                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
                 res.status(200).send({
                     success: true, date: user, token
 
@@ -134,6 +167,7 @@ const UpdateUser = async (req, res) => {
             const result = await User.updateOne({ _id: id }, {
                 $set: {
                     ...data,
+                    img: img?.[0]?.path || user?.img
                 }
             })
             if (user?.img) {
@@ -416,5 +450,6 @@ module.exports = {
     VerifyCode,
     GetProfile,
     createDoctor,
-    updateDoctor
+    updateDoctor,
+    DoctorSignIn
 }

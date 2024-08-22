@@ -19,7 +19,7 @@ const uploadFile = () => {
     });
 
     const fileFilter = (req, file, cb) => {
-        const allowedFilenames = ['img', 'video', 'license'];
+        const allowedFilenames = ['img', 'video', 'license', 'prescription','kycBack','kycFront'];
         if (allowedFilenames.includes(file.fieldname)) {
             if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
                 cb(null, true);
@@ -38,7 +38,10 @@ const uploadFile = () => {
     }).fields([
         { name: 'img', maxCount: 4 },
         { name: 'video', maxCount: 1 },
-        { name: 'license', maxCount: 1 }
+        { name: 'license', maxCount: 1 },
+        { name: 'prescription', maxCount: 1 },
+        { name: 'kycFront', maxCount: 1 },
+        { name: 'kycBack', maxCount: 1 },
     ]);
 
     return (req, res, next) => {
