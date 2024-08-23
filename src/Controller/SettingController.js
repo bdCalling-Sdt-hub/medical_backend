@@ -1,4 +1,5 @@
 const SettingsModel = require("../Models/SettingsModel");
+const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 
 //create setting
 const GetSettings = async (req, res) => {
@@ -38,8 +39,13 @@ const UpdateSettings = async (req, res) => {
         let duplicateKeys = [];
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
+            error.duplicateKeys = duplicateKeys;
         }
-        error.duplicateKeys = duplicateKeys;
+        let requiredField = []
+        if (error?.errors) {
+            requiredField = FormateRequiredFieldMessage(error?.errors);
+            error.requiredField = requiredField;
+        }
         res.send({ success: false, ...error, message: 'Internal Server Error' })
     }
 }

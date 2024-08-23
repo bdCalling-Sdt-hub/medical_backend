@@ -1,5 +1,6 @@
 const CustomError = require("./CustomError");
 const devErrors = (res, error) => {
+    console.log(error)
     res.status(error.statusCode).send({
         status: error.statusCode,
         message: error.message,

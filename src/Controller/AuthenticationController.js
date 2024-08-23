@@ -12,6 +12,7 @@ const UnlinkFiles = require("../middlewares/FileUpload/UnlinkFiles");
 const Queries = require("../utils/Queries");
 const Category = require("../Models/CategoryModel");
 const { generateTimeSlots } = require("../utils/GenarateTime");
+const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 // Clear Cookie
 
 
@@ -36,9 +37,9 @@ const SignUp = async (req, res) => {
         if (existingAdmin?.data?.length > 0) {
             return res.status(201).send({ success: false, message: "admin already exist" });
         }
-        if (category) {
+        if (!user.category && category) {
             user.category = category?.[0]?.name
-        } else {
+        } else if (!user.category && !category) {
             user.category = []
         }
         const newUser = new User({ ...user, password });
@@ -58,7 +59,7 @@ const SignUp = async (req, res) => {
                 `,
             })
             return res.status(200).send({
-                success: true, date: savedUser,
+                success: true, data: savedUser,
 
             });
         } else {
@@ -68,8 +69,13 @@ const SignUp = async (req, res) => {
         let duplicateKeys = []
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error)
+            error.duplicateKeys = duplicateKeys
         }
-        error.duplicateKeys = duplicateKeys
+        let requiredField = []
+        if (error?.errors) {
+            requiredField = FormateRequiredFieldMessage(error?.errors);
+            error.requiredField = requiredField;
+        }
         res.status(500).send({ success: false, message: 'Internal server error', ...error });
     }
 
@@ -95,7 +101,7 @@ const SignIn = async (req, res) => {
                 }
                 const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
                 res.status(200).send({
-                    success: true, date: user, token
+                    success: true, data: user, token
 
                 });
             } else {
@@ -105,7 +111,7 @@ const SignIn = async (req, res) => {
             res.status(400).send({ success: false, message: "user doesn't exist" });
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', error: { error: error, message: 'Internal server error' } });
+        res.status(500).send({ success: false, message: 'Internal server error', ...error });
     }
 }
 // login  doctor
@@ -128,7 +134,7 @@ const DoctorSignIn = async (req, res) => {
                 }
                 const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
                 res.status(200).send({
-                    success: true, date: user, token
+                    success: true, data: user, token
 
                 });
             } else {
@@ -138,7 +144,7 @@ const DoctorSignIn = async (req, res) => {
             res.status(400).send({ success: false, message: "user doesn't exist" });
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', error: { error: error, message: 'Internal server error' } });
+        res.status(500).send({ success: false, message: 'Internal server error', ...error, });
     }
 }
 
@@ -147,6 +153,9 @@ const UpdateUser = async (req, res) => {
     const id = req?.params?.id
     const { access, role, email, password, ...data } = req.body;
     try {
+        if (req?.user?.id !== id) {
+            return res.status(401).send({ success: false, message: 'unauthorized access' });
+        }
         const user = await User.findById(id);
         if (!user) {
             return res.status(404).send({ success: false, message: 'User not found' });
@@ -215,7 +224,7 @@ const ChangePassword = async (req, res) => {
             return res.status(403).send({ success: false, error: { message: "old password doesn't match", } });
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', error: error });
+        res.status(500).send({ success: false, message: 'Internal server error', ...error });
     }
 }
 
@@ -251,7 +260,7 @@ const SendVerifyEmail = async (req, res) => {
             res.status(200).send({ success: true, message: `verification code has been sent to ${email}`, });
         }
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: error } });
+        res.status(500).send({ success: false, message: 'Internal server error', ...error });
     }
 }
 
@@ -340,14 +349,17 @@ const createDoctor = async (req, res) => {
                 return res.status(400).send({ success: false, message: 'available days are required' });
             }
             let data = {}
+            let timeError = {};
             Object.keys(available_days).forEach((key) => {
-                if (!available_days[key]?.startTime, !available_days[key]?.endTime) {
-                    res.status(400).send({ success: false, message: 'startTime and endTime are required' });
+                if (!available_days[key]?.startTime || !available_days[key]?.endTime) {
+                    return timeError.message = 'startTime and endTime are required';
                 }
                 const timeSlots = generateTimeSlots(req?.body?.available_days[key]?.startTime, req?.body?.available_days[key]?.endTime)
                 data[key] = timeSlots
             })
-
+            if (timeError.message) {
+                return res.status(400).send({ success: false, message: 'startTime and endTime are required' })
+            }
             const doctorData = {
                 ...otherInfo,
                 available_days: data,
@@ -363,13 +375,18 @@ const createDoctor = async (req, res) => {
                 let duplicateKeys = [];
                 if (error?.keyValue) {
                     duplicateKeys = FormateErrorMessage(error);
+                    error.duplicateKeys = duplicateKeys;
                 }
-                error.duplicateKeys = duplicateKeys;
-                res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+                let requiredField = []
+                if (error?.errors) {
+                    requiredField = FormateRequiredFieldMessage(error?.errors);
+                    error.requiredField = requiredField;
+                }
+                res.status(500).send({ success: false, ...error, message: 'Internal Server Error' });
             }
         });
     } catch (error) {
-        res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+        res.status(500).send({ success: false, ...error, message: 'Internal Server Error' });
     }
 };
 
@@ -378,9 +395,11 @@ const updateDoctor = async (req, res) => {
     const { doctorId } = req.params;
 
     try {
+        if (req?.user?.id !== doctorId) {
+            return res.status(401).send({ success: false, message: 'unauthorized access' });
+        }
         await uploadFile()(req, res, async function (err) {
             if (err) {
-                console.error(err);
                 return res.status(400).send({ success: false, message: err.message });
             }
             const { role, access, email, password, available_days, ...otherInfo } = req.body;
@@ -428,8 +447,13 @@ const updateDoctor = async (req, res) => {
                 let duplicateKeys = [];
                 if (error?.keyValue) {
                     duplicateKeys = FormateErrorMessage(error);
+                    error.duplicateKeys = duplicateKeys;
                 }
-                error.duplicateKeys = duplicateKeys;
+                let requiredField = []
+                if (error?.errors) {
+                    requiredField = FormateRequiredFieldMessage(error?.errors);
+                    error.requiredField = requiredField;
+                }
                 res.status(500).send({ success: false, error, message: 'Internal Server Error' });
             }
         });

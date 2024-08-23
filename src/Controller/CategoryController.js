@@ -2,6 +2,7 @@ const uploadFile = require("../middlewares/FileUpload/FileUpload");
 const UnlinkFiles = require("../middlewares/FileUpload/UnlinkFiles");
 const Category = require("../Models/CategoryModel");
 const FormateErrorMessage = require("../utils/FormateErrorMessage");
+const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 const Queries = require("../utils/Queries");
 
 // get category 
@@ -13,7 +14,7 @@ const GetCategories = async (req, res) => {
         const result = await Queries(Category, queryKeys, searchKey);
         res.status(200).send({ ...result });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: error } });
+        res.status(500).send({ success: false, message: 'Internal server error', ...error });
     }
 }
 
@@ -30,24 +31,35 @@ const CreateCategory = async (req, res) => {
             const { img } = req.files || {};
             const { name } = req.body
             try {
-                const result = await Category.create({ img: img?.[0]?.path, name });
+                const newCategory = new Category({ img: img?.[0]?.path, name  });
+                const result = await newCategory.save();
                 res.status(201).send({ success: true, data: result });
             } catch (error) {
                 let duplicateKeys = [];
                 if (error?.keyValue) {
                     duplicateKeys = FormateErrorMessage(error);
+                    error.duplicateKeys = duplicateKeys;
                 }
-                error.duplicateKeys = duplicateKeys;
-                res.status(500).send({ success: false, error: { message: 'Internal server error', error: error } });
+                let requiredField = []
+                if (error?.errors) {
+                    requiredField = FormateRequiredFieldMessage(error?.errors);
+                    error.requiredField = requiredField;
+                }
+                res.status(500).send({ success: false, message: 'Internal server error', ...error });
             }
         });
     } catch (error) {
         let duplicateKeys = [];
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
+            error.duplicateKeys = duplicateKeys;
         }
-        error.duplicateKeys = duplicateKeys;
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: error } });
+        let requiredField = []
+        if (error?.errors) {
+            requiredField = FormateRequiredFieldMessage(error?.errors);
+            error.requiredField = requiredField;
+        }
+        res.status(500).send({ success: false, message: 'Internal server error', ...error });
     }
 }
 

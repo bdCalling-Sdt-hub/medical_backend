@@ -17,6 +17,8 @@ const config = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   MAIL_PASSWORD: process.env.MAIL_PASSWORD,
   MAIL_EMAIL: process.env.MAIL_EMAIL,
+  SERVER_SECRET: process.env.SERVER_SECRET,
+  APP_ID: process.env.APP_ID,
 };
 
 module.exports = Object.freeze(config);

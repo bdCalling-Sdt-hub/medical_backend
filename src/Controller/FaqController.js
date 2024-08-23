@@ -1,5 +1,6 @@
 const FaqModel = require("../Models/FaqModel");
 const FormateErrorMessage = require("../utils/FormateErrorMessage");
+const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 const Queries = require("../utils/Queries");
 
 // create Faq
@@ -15,8 +16,13 @@ const CreateFaq = async (req, res) => {
         let duplicateKeys = [];
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
+            error.duplicateKeys = duplicateKeys;
         }
-        error.duplicateKeys = duplicateKeys;
+        let requiredField = []
+        if (error?.errors) {
+            requiredField = FormateRequiredFieldMessage(error?.errors);
+            error.requiredField = requiredField;
+        }
         res.send({ success: false, ...error, message: 'Internal Server Error' })
     }
 }

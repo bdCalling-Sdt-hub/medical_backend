@@ -1,4 +1,7 @@
 const generateTimeSlots = (startTime, endTime) => {
+    if (!startTime || !endTime) {
+        return [];
+    }
     const slots = [];
     let [currentHour, currentMinute, currentMeridian] = parseTime(startTime);
     let [Hour, Minute, Meridian] = parseTime(startTime);

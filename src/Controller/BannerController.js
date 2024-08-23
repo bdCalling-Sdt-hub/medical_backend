@@ -39,7 +39,7 @@ const GetAllBanner = async (req, res) => {
         const result = await Queries(Banner, queryKeys, searchKey);
         res.status(200).send({ ...result });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: error } });
+        res.status(500).send({ success: false, message: 'Internal server error',...error });
     }
 }
 //update banner

@@ -1,6 +1,7 @@
 const Appointment = require("../Models/AppointmentModel");
 const Doctor = require("../Models/DoctorModel");
 const Review = require("../Models/ReviewModel");
+const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 const Queries = require("../utils/Queries");
 
 // Create Review 
@@ -22,8 +23,13 @@ const CreateReview = async (req, res) => {
         let duplicateKeys = [];
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
+            error.duplicateKeys = duplicateKeys;
         }
-        error.duplicateKeys = duplicateKeys;
+        let requiredField = []
+        if (error?.errors) {
+            requiredField = FormateRequiredFieldMessage(error?.errors);
+            error.requiredField = requiredField;
+        }
         res.status(500).send({ success: false, ...error, message: 'Internal Server Error' })
     }
 }
