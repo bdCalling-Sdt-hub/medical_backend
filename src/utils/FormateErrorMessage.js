@@ -1,7 +1,8 @@
 const FormateErrorMessage = (error) => {
-    let duplicateKeys = []
+    console.log(error)
+    let duplicateKeys 
     Object.keys(error?.keyValue)?.map(key => {
-        duplicateKeys.push({ [key]: error?.keyValue[key] })
+        duplicateKeys =`${key} must be unique`
     })
     return duplicateKeys
 }

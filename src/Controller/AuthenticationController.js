@@ -45,6 +45,12 @@ const SignUp = async (req, res) => {
         const newUser = new User({ ...user, password });
         const savedUser = await newUser.save();
         if (savedUser?._id) {
+            const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const code = new Verification({
+                email: savedUser?.email,
+                code: activationCode
+            })
+            await code.save();
             //send mail
             SendEmail({
                 sender: 'Medical',
@@ -55,15 +61,16 @@ const SignUp = async (req, res) => {
                 </h1/>
                 <p>you have successfully registered our website</p>
                 <p>now you can explore more of your website</p>
+                <p>please verify your email with this code : <strong>${activationCode}</strong></p>
                 <h1>medical</h1>
                 `,
             })
-            return res.status(200).send({
-                success: true, data: savedUser,
 
+            return res.status(200).send({
+                success: true, data: savedUser, message: 'user created successfully and verification code sent to your email',
             });
         } else {
-            res.status(201).send({ success: false, error: { message: 'something went wrong' } });
+            res.status(201).send({ success: false, message: 'something went wrong' });
         }
     } catch (error) {
         let duplicateKeys = []
@@ -85,19 +92,39 @@ const SignUp = async (req, res) => {
 const SignIn = async (req, res) => {
     try {
         const { email, password } = req.body
-        //console.log(req.body)
-        const user = await User.findOne({ email: email })
-        if (user) {
-            const result = await bcrypt.compare(password, user?.password);
+        const [user, doctor] = await Promise.all([
+            User.findOne({ email: email }),
+            Doctor.findOne({ email: email })
+        ])
+        if (user || doctor) {
+            let result
+            if (user) {
+                // console.log(user)
+                result = await bcrypt.compare(password, user?.password);
+            } else if (doctor) {
+                console.log(doctor)
+                result = await bcrypt.compare(password, doctor?.password);
+            } else {
+                return res.status(400).send({ success: false, message: "user doesn't exist" });
+            }
             if (result) {
+                if ((user && !user?.verified) || (doctor && !doctor?.verified)) {
+                    const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                    const code = new Verification({
+                        email: doctor?.email || user?.email,
+                        code: activationCode
+                    })
+                    await code.save();
+                    return res.status(400).send({ success: false, message: "please verify your email a verification code sent to your email" });
+                }
                 const userData = {
-                    email: user?.email,
-                    phone: user?.phone,
-                    verified: user?.verified,
-                    name: user?.name,
-                    role: user?.role,
-                    access: user?.access,
-                    id: user?._id
+                    email: user?.email || doctor?.email,
+                    phone: user?.phone || doctor?.phone,
+                    verified: user?.verified || doctor?.verified,
+                    name: user?.name || doctor?.name,
+                    role: user?.role || doctor?.role,
+                    access: user?.access || doctor?.access,
+                    id: user?._id || doctor?._id
                 }
                 const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
                 res.status(200).send({
@@ -192,7 +219,7 @@ const UpdateUser = async (req, res) => {
 // change password 
 const ChangePassword = async (req, res) => {
     try {
-        const { old_Password, password } = req.body;
+        const { old_Password, password, type } = req.body;
         const { id } = req?.user
         //console.log(id, { old_Password, password })
         if (old_Password === password) {
@@ -203,11 +230,20 @@ const ChangePassword = async (req, res) => {
         //console.log(CheckPassword)
         if (CheckPassword) {
             const hash_pass = await HashPassword(password)
-            const result = await User.updateOne({ _id: id }, {
-                $set: {
-                    password: hash_pass
-                }
-            })
+            let result;
+            if (type === 'DOCTOR') {
+                result = await Doctor.updateOne({ _id: id }, {
+                    $set: {
+                        password: hash_pass
+                    }
+                })
+            } else {
+                await User.updateOne({ _id: id }, {
+                    $set: {
+                        password: hash_pass
+                    }
+                })
+            }
             SendEmail({
                 sender: 'medical',
                 receiver: user?.email,
@@ -235,29 +271,43 @@ const SendVerifyEmail = async (req, res) => {
         if (!email) {
             return res.status(400).send({ success: false, message: 'invalid email' });
         }
-        const user = await User.findOne({ email: email })
-        if (!user?.email) {
-            return res.status(400).send({ success: false, message: 'email not found' });
-        }
-        const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const code = new Verification({
-            email: email,
-            code: activationCode
-        })
-        const result = await code.save()
-        if (result?._id) {
-            SendEmail({
-                sender: 'medical',
-                receiver: user?.email,
-                subject: 'register user successfully',
-                msg: `<h1> hallow ${user?.name} </h1/>
+        let user = {}
+        const [doctor, normalUser] = await Promise.all([
+            Doctor.findOne({ email: email }),
+            User.findOne({ email: email })
+        ])
+        if (normalUser || doctor) {
+            if (normalUser) {
+                user = normalUser
+            } else {
+                user = doctor
+            }
+            if (!user?.email) {
+                return res.status(400).send({ success: false, message: 'email not found' });
+            }
+            const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const code = new Verification({
+                email: email,
+                code: activationCode
+            })
+            const result = await code.save()
+            if (result?._id) {
+                SendEmail({
+                    sender: 'medical',
+                    receiver: user?.email,
+                    subject: 'register user successfully',
+                    msg: `<h1> hallow ${user?.name} </h1/>
                 <p>your password reset code is : <strong>${activationCode}</strong> </p>
                 <p>Thank you </p>
                 <h1>medical</h1>
                 `,
-            })
-            //console.log(email)
-            res.status(200).send({ success: true, message: `verification code has been sent to ${email}`, });
+                })
+                //console.log(email)
+                res.status(200).send({ success: true, message: `verification code has been sent to ${email}`, });
+            }
+        }
+        else {
+            res.status(400).send({ success: false, message: 'email not found' });
         }
     } catch (error) {
         res.status(500).send({ success: false, message: 'Internal server error', ...error });
@@ -268,15 +318,35 @@ const SendVerifyEmail = async (req, res) => {
 const VerifyCode = async (req, res) => {
     const { code, email } = req.body
     try {
-        const verify = await Verification.findOne({ email: email, code: code })
+        const [verify, user, doctor] = await Promise.all([
+            Verification.findOne({ email: email, code: code }),
+            User.findOne({ email: email }),
+            Doctor.findOne({ email: email })
+        ])
+
         if (verify?._id) {
-            await User.updateOne({ email: email }, {
-                $set: {
-                    verified: true
-                }
-            })
+            let type;
+            if (user) {
+                type = 'USER'
+            } else if (doctor) {
+                type = 'DOCTOR'
+            }
+            if (type === 'DOCTOR') {
+                await Doctor.updateOne({ email: email }, {
+                    $set: {
+                        verified: true
+                    }
+                })
+            } else {
+                await User.updateOne({ email: email }, {
+                    $set: {
+                        verified: true
+                    }
+                })
+            }
+
             const accessToken = await jwt.sign({ code, email }, ACCESS_TOKEN_SECRET, { expiresIn: 600 });
-            res.status(200).send({ success: true, accessToken, message: "user verified successfully" })
+            res.status(200).send({ success: true, accessToken, message: `${type || 'user'} verified successfully` })
         } else {
             res.status(401).send({ success: false, message: "verification code doesn't match" });
         }
@@ -291,17 +361,26 @@ const ResetPassword = async (req, res) => {
         const requestedUser = req?.user
         const verify = await Verification.findOne({ email: requestedUser?.email, code: requestedUser?.code })
         if (verify?._id) {
-            const { password, confirm_password } = req.body
+            const { password, confirm_password, type } = req.body
             if (password !== confirm_password) {
                 return res.status(201).send({ success: false, error: { message: "confirm password doesn't match" } });
             }
             const hash_pass = await HashPassword(password)
             //console.log(hash_pass)
-            const result = await User.updateOne({ email: verify?.email }, {
-                $set: {
-                    password: hash_pass
-                }
-            })
+            let result;
+            if (type === 'DOCTOR') {
+                result = await Doctor.updateOne({ email: verify?.email }, {
+                    $set: {
+                        password: hash_pass
+                    }
+                })
+            } else {
+                result = await User.updateOne({ email: verify?.email }, {
+                    $set: {
+                        password: hash_pass
+                    }
+                })
+            }
             SendEmail({
                 sender: 'medical',
                 receiver: requestedUser?.email,
@@ -357,7 +436,7 @@ const createDoctor = async (req, res) => {
                 const timeSlots = generateTimeSlots(req?.body?.available_days[key]?.startTime, req?.body?.available_days[key]?.endTime)
                 data[key] = timeSlots
             })
-            if (timeError.message) {
+            if (timeError?.message) {
                 return res.status(400).send({ success: false, message: 'startTime and endTime are required' })
             }
             const doctorData = {
@@ -370,7 +449,26 @@ const createDoctor = async (req, res) => {
             try {
                 const newDoctor = new Doctor(doctorData);
                 await newDoctor.save();
-                res.status(201).send({ success: true, doctor: newDoctor });
+                const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                const code = new Verification({
+                    email: newDoctor?.email,
+                    code: activationCode
+                })
+                await code.save();
+                SendEmail({
+                    sender: 'Medical',
+                    receiver: newDoctor?.email,
+                    subject: 'register user successfully',
+                    msg: `<h1>
+                    hallow ${newDoctor?.name} 
+                    </h1/>
+                    <p>you have successfully registered our website</p>
+                    <p>now you can explore more of your website</p>
+                    <p>please verify your email with this code : <strong>${activationCode}</strong></p>
+                    <h1>medical</h1>
+                    `,
+                })
+                res.status(201).send({ success: true, message: 'doctor created successfully a verification code sent to your email', data: newDoctor });
             } catch (error) {
                 let duplicateKeys = [];
                 if (error?.keyValue) {

@@ -61,6 +61,12 @@ const UserModel = new Schema({
         enum: [0, 1, 2],
         default: 0,
     },
+    verified: {
+        type: Boolean,
+        required: true,
+        enum: [true, false],
+        default: false
+    },
     "category": {
         type: [String],
         required: [true, 'category is required'],

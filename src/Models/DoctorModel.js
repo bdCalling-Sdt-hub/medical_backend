@@ -89,6 +89,12 @@ const DoctorModel = new Schema({
         enum: ['DOCTOR', 'DOCTOR', 'ADMIN'],
         default: 'DOCTOR'
     },
+    verified: {
+        type: Boolean,
+        required: true,
+        enum: [true, false],
+        default: false
+    },
     "access": {
         type: Number,
         required: true,

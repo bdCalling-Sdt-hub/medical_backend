@@ -14,7 +14,23 @@ const CreateReview = async (req, res) => {
             return res.send({ success: false, message: 'You have already reviewed this doctor' })
         }
         const [doctor, appointment, review] = await Promise.all([
-            Doctor.findByIdAndUpdate(receiver, { $inc: { rating: rating, total_rated: 1 } }),
+            Doctor.findByIdAndUpdate(
+                receiver,
+                [
+                    {
+                        $set: {
+                            rating: {
+                                $divide: [
+                                    { $multiply: ["$rating", "$total_rated"] },
+                                    { $add: ["$total_rated", 1] }
+                                ]
+                            },
+                            total_rated: { $add: ["$total_rated", 1] }
+                        }
+                    }
+                ],
+            ),
+            // Doctor.findByIdAndUpdate(receiver, { $inc: { rating: rating, total_rated: 1 } }),
             Appointment.findByIdAndUpdate(appointmentId, { $set: { review: true } }),
             Review.create({ sender: id, receiver, rating, comment })
         ]);
@@ -59,7 +75,7 @@ const DeleteReview = async (req, res) => {
 const GetAllReview = async (req, res) => {
     try {
         const { id } = req.user
-        const { search, receiverId,...queryKeys } = req.query;
+        const { search, receiverId, ...queryKeys } = req.query;
         const searchKey = {}
         if (search) searchKey.name = search
         if (req?.user?.role !== 'ADMIN') {
