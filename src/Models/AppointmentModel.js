@@ -32,11 +32,16 @@ const AppointmentSchema = new Schema({
         type: String,
         required: [true, 'Status Id is required'],
         default: 'pending',
-        enum: ['pending', 'accepted', 'rejected','completed']
+        enum: ['pending', 'accepted', 'rejected', 'completed']
     },
     reason: {
         type: String,
         required: [true, 'Reason is required']
+    },
+    appointment_type: {
+        type: String,
+        required: [true, 'Appointment Type is required'],
+        enum: ['ONLINE', 'OFFLINE']
     },
     desc: {
         type: String,

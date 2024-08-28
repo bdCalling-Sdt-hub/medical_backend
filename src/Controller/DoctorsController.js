@@ -10,7 +10,7 @@ const GetAllDoctors = async (req, res) => {
         const result = await Queries(Doctor, queryKeys, searchKey);
         res.status(200).send({ ...result });
     } catch (err) {
-        res.status(500).send({ success: false,  message: 'Internal server error', ...err  });
+        res.status(500).send({ success: false, message: err?.message || 'Internal server error', ...err });
     }
 };
 //delete doctors
@@ -33,7 +33,7 @@ const DeleteDoctor = async (req, res) => {
         }
         res.status(200).send({ success: true, data: result, message: 'Doctor deleted successfully' });
     } catch (err) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: err } });
+        res.status(500).send({ success: false, message: err?.message || 'Internal server error', ...err });
     }
 }
 // block doctors 
@@ -50,7 +50,7 @@ const BlockDoctor = async (req, res) => {
         const result = await Doctor.updateOne({ _id: doctorId }, { $set: { block: !doctor.block } });
         res.status(200).send({ success: true, data: result, message: !doctor.block ? 'Doctor blocked successfully' : 'Doctor unblocked successfully' });
     } catch (err) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: err } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...err });
     }
 }
 // get Popular doctor
@@ -64,7 +64,7 @@ const GetPopularDoctor = async (req, res) => {
         const result = await Queries(Doctor, queryKeys, searchKey);
         res.status(200).send({ success: true, ...result });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 // get Recommended doctor
@@ -80,7 +80,7 @@ const GetRecommendedDoctor = async (req, res) => {
         const result = await Queries(Doctor, queryKeys, searchKey);
         res.status(200).send({ success: true, ...result });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 // get single doctor
@@ -90,7 +90,7 @@ const GetSingleDoctor = async (req, res) => {
         const result = await Doctor.findOne({ _id: doctorId })
         res.status(200).send({ success: true, data: result });
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 
 }

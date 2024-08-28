@@ -4,7 +4,36 @@ const HashPassword = require('../utils/HashPassword');
 //     startTime: { type: String, required: true },
 //     endTime: { type: String, required: true }
 // }, { _id: false });
-
+const available_forSchema = new Schema({
+    monday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+    },
+    tuesday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+    },
+    wednesday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+    },
+    thursday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+    },
+    friday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+    },
+    saturday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+    },
+    sunday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+    },
+}, { _id: false })
 const AvailabilitySchema = new Schema({
     monday: {
         type: [String],
@@ -119,9 +148,8 @@ const DoctorModel = new Schema({
         }
     },
     "available_for": {
-        type: String,
-        enum: ['ONLINE', 'OFFLINE'],
-        required: [true, 'availableFor is required'],
+        type: available_forSchema,
+        required: [true, 'available For is required'],
     },
     "license": {
         type: String,
@@ -148,6 +176,11 @@ const DoctorModel = new Schema({
         required: [true, 'Rating is required'],
         default: 0,
     },
+    // "day_of_weekend": {
+    //     type: String,
+    //     required: [true, 'Day Of Weekend is required'],
+    //     enum: ['sunday', 'saturday', 'friday', 'thursday', 'wednesday', 'tuesday', 'monday'],
+    // },
     "total_rated": {
         type: Number,
         required: [true, 'Rating is required'],

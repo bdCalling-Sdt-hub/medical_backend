@@ -12,7 +12,7 @@ const GetAllUsers = async (req, res) => {
         const result = await Queries(User, queryKeys, searchKey);
         res.status(200).send({ success: true, data: result });
     } catch (err) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...err });
+        res.status(500).send({ success: false, message: err?.message || 'Internal server error', ...err });
     }
 };
 //delete Users
@@ -36,7 +36,7 @@ const DeleteUser = async (req, res) => {
         }
         res.status(200).send({ success: true, data: result, message: 'User deleted successfully' });
     } catch (err) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: err } });
+        res.status(500).send({ success: false, message: err?.message || 'Internal server error', err });
     }
 }
 // block Users 
@@ -50,11 +50,11 @@ const BlockUser = async (req, res) => {
         if (!ExistingUser) {
             return res.status(404).send({ success: false, message: 'User not found' });
         }
-        console.log(ExistingUser)
+        // console.log(ExistingUser)
         const result = await User.updateOne({ _id: userId }, { $set: { block: !ExistingUser.block } });
         res.status(200).send({ success: true, data: result, message: !ExistingUser.block ? 'User blocked successfully' : 'User unblocked successfully' });
     } catch (err) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error: err } });
+        res.status(500).send({ success: false, ...err, message: err?.message || 'Internal server error', });
     }
 }
 module.exports = {

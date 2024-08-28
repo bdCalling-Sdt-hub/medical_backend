@@ -39,7 +39,7 @@ const GetNotifications = async (req, res) => {
         const notifications = await Queries(Notification, queryKeys, searchKey, populatePath = populatepaths, selectFields = selectField);
         res.status(200).send(notifications)
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 // update notifications 
@@ -49,8 +49,8 @@ const UpdateNotifications = async (req, res) => {
         const notifications = await Notification.updateMany({ _id: { $in: notificationIds } }, { isRead: true })
         res.status(200).send({ success: true, message: 'Notifications Read successfully', data: notifications })
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 
-module.exports = { CreateNotification, GetNotifications ,UpdateNotifications}
+module.exports = { CreateNotification, GetNotifications, UpdateNotifications }

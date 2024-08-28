@@ -15,19 +15,19 @@ const CreateBanner = async (req, res) => {
             }
             const { img } = req.files || {};
             if (!img) {
-                res.status(500).send({ success: false, message: 'Banner Image Iss required', });
+                return res.status(500).send({ success: false, message: 'Banner Image Iss required', });
             }
             try {
                 const banner = new Banner({ img: img?.[0]?.path });
-                const result = await banner.save();
-                res.status(200).send({ success: true, data: result, message: "Banner created successfully" });
+                await banner.save();
+                res.status(200).send({ success: true, data: banner, message: "Banner created successfully" });
             } catch (error) {
-                res.status(500).send({ success: false, message: 'Internal server error', ...error });
+                res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
             }
         })
 
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 //get all banner
@@ -39,7 +39,7 @@ const GetAllBanner = async (req, res) => {
         const result = await Queries(Banner, queryKeys, searchKey);
         res.status(200).send({ ...result });
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error',...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 //update banner
@@ -69,11 +69,11 @@ const UpdateBanner = async (req, res) => {
                 });
                 res.status(200).send({ success: true, message: 'Banner Updated successfully', data: result });
             } catch (error) {
-                res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+                res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
             }
         });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 // delete banner
@@ -93,7 +93,7 @@ const DeleteBanner = async (req, res) => {
         }
         res.status(200).send({ success: true, data: result, message: 'banner deleted successfully' });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 //Update Banner Order 
@@ -116,7 +116,7 @@ const UpdateBannerOrder = async (req, res) => {
         };
         res.status(200).send({ success: true, data: result, message: 'Banner order updated successfully' });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 module.exports = {

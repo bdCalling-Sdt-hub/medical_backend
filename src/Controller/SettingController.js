@@ -17,7 +17,7 @@ const GetSettings = async (req, res) => {
             })
         }
     } catch (error) {
-        res.send({ success: false, ...error, message: 'Internal Server Error' })
+        res.send({ success: false, ...error, message: error?.message || 'Internal server error', })
     }
 }
 // update setting 
@@ -36,7 +36,7 @@ const UpdateSettings = async (req, res) => {
             res.send({ success: true, data: result, message: `${name} Updated Successfully` })
         }
     } catch (error) {
-        let duplicateKeys = [];
+        let duplicateKeys = '';
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
             error.duplicateKeys = duplicateKeys;
@@ -46,7 +46,7 @@ const UpdateSettings = async (req, res) => {
             requiredField = FormateRequiredFieldMessage(error?.errors);
             error.requiredField = requiredField;
         }
-        res.send({ success: false, ...error, message: 'Internal Server Error' })
+        res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });/*  */
     }
 }
 module.exports = { UpdateSettings, GetSettings }

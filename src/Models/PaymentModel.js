@@ -30,8 +30,19 @@ const PaymentSchema = new Schema({
         required: [true, 'payment doctor required'],
         enum: [true, false],
         default: false
+    },
+    doctor_amount: {
+        type: Number,
+        required: true
     }
 })
-
+PaymentSchema.pre('save', function (next) {
+    if (this.payment_doctor) {
+        this.doctor_payment = this.amount - (this.amount * 0.03);
+    } else {
+        this.doctor_payment = this.amount;
+    }
+    next();
+});
 const PaymentModel = model('payment', PaymentSchema);
 module.exports = PaymentModel

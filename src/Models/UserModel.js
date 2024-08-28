@@ -11,6 +11,11 @@ const UserModel = new Schema({
         type: String,
         required: [true, 'name is required'],
     },
+    "age": {
+        type: Number,
+        required: [false, 'age is required'],
+        default: 0
+    },
     "email": {
         type: String,
         required: [true, 'email is required'],

@@ -9,7 +9,7 @@ const applyMiddleware = (app)=>{
 app.use(cors({
     origin: [
         LOCAL_CLIENT,
-        CLIENT,
+        CLIENT,'*'
     ],
     credentials: true,
     optionsSuccessStatus: 200

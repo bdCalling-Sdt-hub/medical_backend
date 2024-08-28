@@ -353,7 +353,22 @@ const GetAvailablePayment = async (req, res) => {
         res.status(500).send({ success: false, message: "Internal server error", ...error });
     }
 };
-
+const GetTotalBalance = async (req, res) => {
+    try {
+        const { search, ...queryKeys } = req.query;
+        const searchKey = {}
+        if (req.user?.role === "USER") {
+            return res.status(401).send({ success: false, message: "unauthorized access" })
+        }
+        if (req?.user?.role !== "ADMIN") {
+            queryKeys.doctorId = req?.user?.id
+        }
+        const result = await Queries(PaymentModel, queryKeys, searchKey);
+        res.status(200).send({ success: true, message: "Available Payment", data: result })
+    } catch (error) {
+        res.status(500).send({ success: false, message: "Internal server error", ...error })
+    }
+}
 // const GetAvailablePayment = async (req, res) => {
 //     try {
 //         const { search, ...queryKeys } = req.query;

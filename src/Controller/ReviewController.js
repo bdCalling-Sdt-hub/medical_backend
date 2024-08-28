@@ -36,7 +36,7 @@ const CreateReview = async (req, res) => {
         ]);
         res.send({ success: true, data: review, message: 'Review Given Successfully' })
     } catch (error) {
-        let duplicateKeys = [];
+        let duplicateKeys = '';
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
             error.duplicateKeys = duplicateKeys;
@@ -46,7 +46,7 @@ const CreateReview = async (req, res) => {
             requiredField = FormateRequiredFieldMessage(error?.errors);
             error.requiredField = requiredField;
         }
-        res.status(500).send({ success: false, ...error, message: 'Internal Server Error' })
+        res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });
     }
 }
 // delete review
@@ -68,7 +68,7 @@ const DeleteReview = async (req, res) => {
             res.status(200).send({ success: true, data: result, message: 'Review Deleted Successfully' })
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error })
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error })
     }
 }
 // get Doctor Review
@@ -84,7 +84,7 @@ const GetAllReview = async (req, res) => {
         const result = await Queries(Review, queryKeys, searchKey, populatePath = "receiver", selectFields = "name email phone location _id img specialization rating total_rated");
         return res.status(200).send({ success: true, data: result })
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error })
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error })
     }
 }
 module.exports = { CreateReview, DeleteReview, GetAllReview }

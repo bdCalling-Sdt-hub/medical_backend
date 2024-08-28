@@ -31,7 +31,7 @@ const uploadFile = () => {
         }
     };
 
-    const maxVideoLength = 20; // 20 MB for video files
+    const maxVideoLength = 20; 
     const upload = multer({
         storage: storage,
         fileFilter: fileFilter,

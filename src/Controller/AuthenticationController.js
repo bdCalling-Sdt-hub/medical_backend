@@ -13,6 +13,7 @@ const Queries = require("../utils/Queries");
 const Category = require("../Models/CategoryModel");
 const { generateTimeSlots } = require("../utils/GenarateTime");
 const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
+const checkMissingDays = require("../utils/AvailableForValidation");
 // Clear Cookie
 
 
@@ -21,7 +22,31 @@ const SignUp = async (req, res) => {
     try {
         const { access, confirm_password, password, ...user } = req.body
         if (confirm_password !== password) {
-            return res.status(201).send({ success: false, error: { message: "confirm password doesn't match" } });
+            return res.status(201).send({ success: false, message: "confirm password doesn't match" });
+        }
+        const email = user?.email
+        const existingUsers = await User.findOne({ email: email, verified: false })
+        if (existingUsers) {
+            const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const code = new Verification({
+                email: existingUsers?.email,
+                code: activationCode
+            })
+            await code.save();
+            SendEmail({
+                sender: 'Medical',
+                receiver: existingUsers?.email,
+                subject: 'verify code',
+                msg: `<h1>
+            hallow ${existingUsers?.name} 
+            </h1/>
+            <p>you have successfully registered our website</p>
+            <p>now you can explore more of your website</p>
+            <p>please verify your email with this code : <strong>${activationCode}</strong></p>
+            <h1>medical</h1>
+            `,
+            })
+            return res.status(200).send({ success: true, data: existingUsers, message: 'user already exist a verification email has been sent to your email' });
         }
         let existingAdmin;
         let category;
@@ -73,7 +98,7 @@ const SignUp = async (req, res) => {
             res.status(201).send({ success: false, message: 'something went wrong' });
         }
     } catch (error) {
-        let duplicateKeys = []
+        let duplicateKeys = ''
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error)
             error.duplicateKeys = duplicateKeys
@@ -83,7 +108,7 @@ const SignUp = async (req, res) => {
             requiredField = FormateRequiredFieldMessage(error?.errors);
             error.requiredField = requiredField;
         }
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });
     }
 
 }
@@ -92,6 +117,7 @@ const SignUp = async (req, res) => {
 const SignIn = async (req, res) => {
     try {
         const { email, password } = req.body
+        //  console.log(email, password)
         const [user, doctor] = await Promise.all([
             User.findOne({ email: email }),
             Doctor.findOne({ email: email })
@@ -99,10 +125,8 @@ const SignIn = async (req, res) => {
         if (user || doctor) {
             let result
             if (user) {
-                // console.log(user)
                 result = await bcrypt.compare(password, user?.password);
             } else if (doctor) {
-                console.log(doctor)
                 result = await bcrypt.compare(password, doctor?.password);
             } else {
                 return res.status(400).send({ success: false, message: "user doesn't exist" });
@@ -128,17 +152,17 @@ const SignIn = async (req, res) => {
                 }
                 const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
                 res.status(200).send({
-                    success: true, data: user, token
+                    success: true, data: user || doctor, token
 
                 });
             } else {
-                res.status(400).send({ success: false, error: { message: "Wrong Credentials" } });
+                res.status(400).send({ success: false, message: "Wrong password" });
             }
         } else {
             res.status(400).send({ success: false, message: "user doesn't exist" });
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 // login  doctor
@@ -171,18 +195,14 @@ const DoctorSignIn = async (req, res) => {
             res.status(400).send({ success: false, message: "user doesn't exist" });
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error, });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error, });
     }
 }
 
 //update user
 const UpdateUser = async (req, res) => {
-    const id = req?.params?.id
-    const { access, role, email, password, ...data } = req.body;
+    const { id } = req?.user
     try {
-        if (req?.user?.id !== id) {
-            return res.status(401).send({ success: false, message: 'unauthorized access' });
-        }
         const user = await User.findById(id);
         if (!user) {
             return res.status(404).send({ success: false, message: 'User not found' });
@@ -191,47 +211,66 @@ const UpdateUser = async (req, res) => {
             if (err) {
                 return res.status(400).send({ success: false, message: err.message });
             }
-
-            const { img } = req.files || {};
-            if (err) {
-                return res.status(400).send({ success: false, message: err.message, error: err });
-            }
-            if (req?.files?.img) {
-                data.img = req.files.img[0]?.path
-
-            }
-            const result = await User.updateOne({ _id: id }, {
-                $set: {
-                    ...data,
-                    img: img?.[0]?.path || user?.img
+            try {
+                const { access, role, email, password, category, ...data } = req.body;
+                const { img } = req.files || {};
+                if (err) {
+                    return res.status(400).send({ success: false, message: err.message || 'Something went wrong', ...err });
                 }
-            })
-            if (user?.img) {
-                UnlinkFiles([user?.img]);
+                if (req?.files?.img) {
+                    data.img = req.files.img[0]?.path
+                }
+                if (category) {
+                    data.category = JSON.parse(category)
+                }
+                const result = await User.updateOne({ _id: id }, {
+                    $set: {
+                        ...data,
+                        img: img?.[0]?.path || user?.img,
+
+                    }
+                })
+                if (user?.img) {
+                    UnlinkFiles([user?.img]);
+                }
+                res.status(200).send({ success: true, data: result, message: 'Profile Updated Successfully' });
+            } catch (error) {
+                return res.status(500).send({ success: false, ...error, message: error?.message || 'Internal server error', });
             }
-            res.status(200).send({ success: true, data: result, message: 'user updated successfully' });
         });
     } catch (error) {
-        res.status(500).send({ success: false, error: { error, message: 'Internal server error' } });
+        res.status(500).send({ success: false, ...error, message: error?.message || 'Internal server error', });
     }
 }
 
 // change password 
 const ChangePassword = async (req, res) => {
     try {
-        const { old_Password, password, type } = req.body;
-        const { id } = req?.user
+        const { old_Password, password, confirm_password } = req.body;
+        if (password !== confirm_password) {
+            return res.status(201).send({ success: false, message: "confirm password doesn't match" });
+        }
+        const { id, role } = req?.user
         //console.log(id, { old_Password, password })
         if (old_Password === password) {
-            return res.status(403).send({ success: false, error: { message: "new password cannot be your old password", } });
+            return res.status(403).send({ success: false, message: "new password cannot be your old password", });
         }
-        const user = await User.findOne({ _id: id })
+        let user;
+        if (role === 'DOCTOR') {
+            user = await Doctor.findById(id);
+        } else {
+            user = await User.findById(id);
+        }
+        const newPasswordCheck = await bcrypt.compare(password, user?.password);
+        if (newPasswordCheck) {
+            return res.status(403).send({ success: false, message: "new password cannot be your old password", });
+        }
         const CheckPassword = await bcrypt.compare(old_Password, user?.password);
         //console.log(CheckPassword)
         if (CheckPassword) {
             const hash_pass = await HashPassword(password)
             let result;
-            if (type === 'DOCTOR') {
+            if (role === 'DOCTOR') {
                 result = await Doctor.updateOne({ _id: id }, {
                     $set: {
                         password: hash_pass
@@ -260,7 +299,7 @@ const ChangePassword = async (req, res) => {
             return res.status(403).send({ success: false, error: { message: "old password doesn't match", } });
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 
@@ -310,7 +349,7 @@ const SendVerifyEmail = async (req, res) => {
             res.status(400).send({ success: false, message: 'email not found' });
         }
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 
@@ -351,7 +390,7 @@ const VerifyCode = async (req, res) => {
             res.status(401).send({ success: false, message: "verification code doesn't match" });
         }
     } catch (error) {
-        res.status(500).send({ success: false, error: { error, message: 'Internal server error', } });
+        res.status(500).send({ success: false, error: { error, message: error?.message || 'Internal server error', } });
     }
 }
 
@@ -399,18 +438,23 @@ const ResetPassword = async (req, res) => {
         }
 
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 
 // get user profile
 const GetProfile = async (req, res) => {
-    const { id } = req.user;
+    const { email, role } = req.user;
     try {
-        const result = await User.findOne({ _id: id })
+        let result;
+        if (role === 'DOCTOR') {
+            result = await Doctor.findOne({ email: email })
+        } else {
+            result = await User.findOne({ email: email })
+        }
         res.status(200).send({ success: true, data: result });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 
@@ -422,44 +466,85 @@ const createDoctor = async (req, res) => {
                 console.error(err);
                 return res.status(400).send({ success: false, message: err.message });
             }
-            const { available_days, ...otherInfo } = req.body
-            const { img, license } = req.files || {};
-            if (!available_days || Object.keys(available_days).length === 0) {
-                return res.status(400).send({ success: false, message: 'available days are required' });
-            }
-            let data = {}
-            let timeError = {};
-            Object.keys(available_days).forEach((key) => {
-                if (!available_days[key]?.startTime || !available_days[key]?.endTime) {
-                    return timeError.message = 'startTime and endTime are required';
-                }
-                const timeSlots = generateTimeSlots(req?.body?.available_days[key]?.startTime, req?.body?.available_days[key]?.endTime)
-                data[key] = timeSlots
-            })
-            if (timeError?.message) {
-                return res.status(400).send({ success: false, message: 'startTime and endTime are required' })
-            }
-            const doctorData = {
-                ...otherInfo,
-                available_days: data,
-                img: img?.[0]?.path || '',
-                license: license?.[0]?.path || ''
-            };
-
             try {
-                const newDoctor = new Doctor(doctorData);
-                await newDoctor.save();
-                const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
-                const code = new Verification({
-                    email: newDoctor?.email,
-                    code: activationCode
+                const { available_days, available_for, ...otherInfo } = req.body
+                const email = otherInfo?.email
+                const existingDoctor = await Doctor.findOne({ email: email, verified: false })
+                if (existingDoctor) {
+                    const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                    const code = new Verification({
+                        email: existingDoctor?.email,
+                        code: activationCode
+                    })
+                    await code.save();
+                    SendEmail({
+                        sender: 'Medical',
+                        receiver: existingDoctor?.email,
+                        subject: 'verify code',
+                        msg: `<h1>
+                    hallow ${existingDoctor?.name} 
+                    </h1/>
+                    <p>you have successfully registered our website</p>
+                    <p>now you can explore more of your website</p>
+                    <p>please verify your email with this code : <strong>${activationCode}</strong></p>
+                    <h1>medical</h1>
+                    `,
+                    })
+                    return res.status(400).send({ success: false, data: existingDoctor, message: 'user already exist a verification email has been sent to your email' });
+                }
+                const available_days_purse = JSON.parse(available_days)
+                const available_for_purse = JSON.parse(available_for)
+                // console.log(available_for_purse, available_days_purse,otherInfo)
+                // return res.send({ available_days: JSON.parse(available_days), available_for: JSON.parse(available_for) })
+                const { img, license } = req.files || {};
+                if (!available_days_purse || Object.keys(available_days_purse).length === 0) {
+                    return res.status(400).send({ success: false, message: 'available days are required' });
+                }
+                let data = {}
+                let timeError = {};
+
+                Object.keys(available_days_purse).forEach((key) => {
+                    if ((!available_days_purse[key]?.startTime && available_days_purse[key]?.endTime) || (available_days_purse[key]?.startTime && !available_days_purse[key]?.endTime)) {
+                        timeError = { message: `missing ${available_days_purse[key]?.startTime ? 'endTime' : 'startTime'} for ${key}` }
+                    } else if ((available_days_purse[key]?.startTime && available_days_purse[key]?.endTime) && (available_days_purse[key]?.startTime === available_days_purse[key]?.endTime)) {
+                        timeError = { message: `invalid ${available_days_purse[key]?.startTime ? 'endTime' : 'startTime'} for ${key}` }
+                    } else if (available_days_purse[key]?.startTime && available_days_purse[key]?.endTime) {
+                        try {
+                            const timeSlots = generateTimeSlots(available_days_purse[key]?.startTime, available_days_purse[key]?.endTime)
+                            data[key] = timeSlots
+                        } catch (error) {
+                            return res.status(400).send({ success: false, message: error.message })
+                        }
+                    }
                 })
-                await code.save();
-                SendEmail({
-                    sender: 'Medical',
-                    receiver: newDoctor?.email,
-                    subject: 'register user successfully',
-                    msg: `<h1>
+                if (timeError?.message) {
+                    return res.status(400).send({ success: false, message: timeError?.message })
+                }
+                const availableDaysCheck = checkMissingDays(data, available_for_purse)
+                if (availableDaysCheck) {
+                    return res.status(400).send({ success: false, message: "There are days in 'data' that don't exist in 'availableTime" })
+                }
+                const doctorData = {
+                    ...otherInfo,
+                    available_for: available_for_purse,
+                    available_days: data,
+                    img: img?.[0]?.path || '',
+                    license: license?.[0]?.path || ''
+                };
+                try {
+                    const newDoctor = new Doctor(doctorData);
+                    await newDoctor.save();
+                    const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                    const code = new Verification({
+                        email: newDoctor?.email,
+                        code: activationCode
+                    })
+                    await code.save();
+                    SendEmail({
+                        sender: 'Medical',
+                        receiver: newDoctor?.email,
+                        subject: 'register user successfully',
+                        msg: `<h1>
                     hallow ${newDoctor?.name} 
                     </h1/>
                     <p>you have successfully registered our website</p>
@@ -467,24 +552,27 @@ const createDoctor = async (req, res) => {
                     <p>please verify your email with this code : <strong>${activationCode}</strong></p>
                     <h1>medical</h1>
                     `,
-                })
-                res.status(201).send({ success: true, message: 'doctor created successfully a verification code sent to your email', data: newDoctor });
+                    })
+                    res.status(201).send({ success: true, message: 'doctor created successfully a verification code sent to your email', data: newDoctor });
+                } catch (error) {
+                    let duplicateKeys = '';
+                    if (error?.keyValue) {
+                        duplicateKeys = FormateErrorMessage(error);
+                        error.duplicateKeys = duplicateKeys;
+                    }
+                    let requiredField = []
+                    if (error?.errors) {
+                        requiredField = FormateRequiredFieldMessage(error?.errors);
+                        error.requiredField = requiredField;
+                    }
+                    res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });
+                }
             } catch (error) {
-                let duplicateKeys = [];
-                if (error?.keyValue) {
-                    duplicateKeys = FormateErrorMessage(error);
-                    error.duplicateKeys = duplicateKeys;
-                }
-                let requiredField = []
-                if (error?.errors) {
-                    requiredField = FormateRequiredFieldMessage(error?.errors);
-                    error.requiredField = requiredField;
-                }
-                res.status(500).send({ success: false, ...error, message: 'Internal Server Error' });
+                return res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
             }
         });
     } catch (error) {
-        res.status(500).send({ success: false, ...error, message: 'Internal Server Error' });
+        res.status(500).send({ success: false, ...error, message: error?.message || 'Internal server error', });
     }
 };
 
@@ -542,7 +630,7 @@ const updateDoctor = async (req, res) => {
 
                 res.status(200).send({ success: true, result, message: 'Doctor updated successfully' });
             } catch (error) {
-                let duplicateKeys = [];
+                let duplicateKeys = '';
                 if (error?.keyValue) {
                     duplicateKeys = FormateErrorMessage(error);
                     error.duplicateKeys = duplicateKeys;
@@ -552,11 +640,11 @@ const updateDoctor = async (req, res) => {
                     requiredField = FormateRequiredFieldMessage(error?.errors);
                     error.requiredField = requiredField;
                 }
-                res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+                res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });
             }
         });
     } catch (error) {
-        res.status(500).send({ success: false, error, message: 'Internal Server Error' });
+        res.status(500).send({ success: false, ...error, message: error?.message || 'Internal server error', });
     }
 };
 
