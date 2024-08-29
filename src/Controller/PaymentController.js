@@ -232,7 +232,7 @@ const UserGetPaymentHistory = async (req, res) => {
             queryKeys.userId = req?.user?.id
         }
         const result = await Queries(PaymentModel, queryKeys, searchKey);
-        res.status(200).send({ success: true, message: "Payment history", data: result })
+        res.status(200).send({ success: true, message: "Payment history", ...result })
     } catch (error) {
         res.status(500).send({ success: false, message: "Internal server error", ...error })
     }

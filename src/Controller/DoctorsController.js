@@ -77,7 +77,9 @@ const GetRecommendedDoctor = async (req, res) => {
         const searchKey = {}
         queryKeys.block = false
         queryKeys.specialization = { $in: [...category] }
-        queryKeys.rating = { $gte: 4.5 }
+        queryKeys.sort = 'rating'
+        queryKeys.order = 'esc'
+        // queryKeys.rating = { $gte: 4.5 }
         if (search) searchKey.name = search
         const result = await Queries(Doctor, queryKeys, searchKey);
         res.status(200).send({ success: true, ...result });

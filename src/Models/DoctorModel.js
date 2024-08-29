@@ -7,31 +7,31 @@ const HashPassword = require('../utils/HashPassword');
 const available_forSchema = new Schema({
     monday: {
         type: String,
-        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
     },
     tuesday: {
         type: String,
-        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
     },
     wednesday: {
         type: String,
-        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
     },
     thursday: {
         type: String,
-        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
     },
     friday: {
         type: String,
-        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
     },
     saturday: {
         type: String,
-        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
     },
     sunday: {
         type: String,
-        enum: ['ONLINE', 'OFFLINE','WEEKEND'],
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
     },
 }, { _id: false })
 const AvailabilitySchema = new Schema({
@@ -68,7 +68,8 @@ const AvailabilitySchema = new Schema({
 const DoctorModel = new Schema({
     'img': {
         type: String,
-        required: false
+        required: false,
+        default: null
     },
     "name": {
         type: String,

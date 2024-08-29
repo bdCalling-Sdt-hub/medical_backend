@@ -26,7 +26,7 @@ const CreateAppointment = async (req, res) => {
                 };
                 const [Existingdoctor, ExistingAppointment] = await Promise.all([
                     Doctor.findOne(query),
-                    Appointment.find({ doctorId, day, time })
+                    Appointment.find({ doctorId, day, time, date: new Date(date).toISOString() })
                 ])
                 if (!Existingdoctor) {
                     return res.status(404).send({ success: false, message: 'Doctor Not Available For Appointment' });
@@ -181,6 +181,24 @@ const GetSingleAppointment = async (req, res) => {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
+const UpdateAppointmentStatus = async (req, res) => {
+    try {
+        const { id, role } = req.user;
+        const { appointmentId } = req.params;
+        const { status } = req.body;
+        const Appointments = await Appointment.findOne({ _id: appointmentId });
+        if (!Appointments) {
+            return res.status(404).send({ success: false, message: 'Appointment Not Found' });
+        }
+        if (id !== Appointments.userId || id !== Appointments.doctorId || role !== 'ADMIN') {
+            return res.status(403).send({ success: false, message: 'Forbidden access' });
+        }
+        const result = await Appointment.updateOne({ _id: appointmentId }, { $set: { status: status } });
+        res.status(200).send({ success: true, data: result, message: 'Appointment Status Updated Successfully' });
+    } catch (error) {
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
+    }
+}
 module.exports = {
-    CreateAppointment, GetAllAppointments, UpdateAppointments, DeleteAppointment, GetSingleAppointment
+    CreateAppointment, GetAllAppointments, UpdateAppointments, DeleteAppointment, GetSingleAppointment, UpdateAppointmentStatus
 }

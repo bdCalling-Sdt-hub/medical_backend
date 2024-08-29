@@ -10,7 +10,7 @@ const GetSettings = async (req, res) => {
             return res.send({ success: true, data: result })
         } else {
             return res.send({
-                success: false, data: {
+                success: true, data: {
                     "name": type,
                     "value": "",
                 }
@@ -32,8 +32,9 @@ const UpdateSettings = async (req, res) => {
             const result = await SettingsModel.updateOne({ name }, { $set: { value } })
             return res.send({ success: true, data: result, message: `${name} Updated Successfully` })
         } else {
-            const result = await SettingsModel.create({ name, value })
-            res.send({ success: true, data: result, message: `${name} Updated Successfully` })
+            const settingData = new SettingsModel({ name, value })
+            const result = await settingData.save()
+            return res.send({ success: true, data: result, message: `${name} Updated Successfully` })
         }
     } catch (error) {
         let duplicateKeys = '';
