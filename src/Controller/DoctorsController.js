@@ -1,4 +1,5 @@
 const Doctor = require("../Models/DoctorModel");
+const User = require("../Models/UserModel");
 const Queries = require("../utils/Queries");
 // get all doctors
 const GetAllDoctors = async (req, res) => {
@@ -70,11 +71,12 @@ const GetPopularDoctor = async (req, res) => {
 // get Recommended doctor
 const GetRecommendedDoctor = async (req, res) => {
     try {
+        const { id } = req.user
+        const { category } = await User.findById(id)
         const { search, ...queryKeys } = req.query;
-        const { specialization } = req.body;
         const searchKey = {}
         queryKeys.block = false
-        queryKeys.specialization = { $in: [...specialization] }
+        queryKeys.specialization = { $in: [...category] }
         queryKeys.rating = { $gte: 4.5 }
         if (search) searchKey.name = search
         const result = await Queries(Doctor, queryKeys, searchKey);

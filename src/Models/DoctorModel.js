@@ -190,6 +190,7 @@ const DoctorModel = new Schema({
 
 DoctorModel.pre('save', async function (next) {
     this.email = this.email.toLowerCase();
+    this.specialization = this.specialization.toLowerCase();
     if (this.isModified('password')) {
         try {
             this.password = await HashPassword(this.password);

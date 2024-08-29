@@ -296,7 +296,7 @@ const ChangePassword = async (req, res) => {
             })
             return res.status(200).send({ success: true, message: 'password updated successfully', data: result });
         } else {
-            return res.status(403).send({ success: false, error: { message: "old password doesn't match", } });
+            return res.status(403).send({ success: false, message: "old password doesn't match", });
         }
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
