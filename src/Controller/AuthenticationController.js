@@ -139,7 +139,7 @@ const SignIn = async (req, res) => {
                         code: activationCode
                     })
                     await code.save();
-                    return res.status(400).send({ success: false, message: "please verify your email a verification code sent to your email" });
+                    return res.status(400).send({ success: false, data: user || doctor, message: "please verify your email a verification code sent to your email" });
                 }
                 const userData = {
                     email: user?.email || doctor?.email,
@@ -581,49 +581,71 @@ const updateDoctor = async (req, res) => {
     const { doctorId } = req.params;
 
     try {
-        if (req?.user?.id !== doctorId) {
+        if (req.user.role !== 'ADMIN' && req.user.id !== doctorId) {
             return res.status(401).send({ success: false, message: 'unauthorized access' });
+
         }
         await uploadFile()(req, res, async function (err) {
             if (err) {
                 return res.status(400).send({ success: false, message: err.message });
             }
-            const { role, access, email, password, available_days, ...otherInfo } = req.body;
+            const { role, access, email, password, available_for, available_days, ...otherInfo } = req.body;
             const { img, license } = req.files || {};
+            let data = {}
+            let timeError = {};
             try {
                 const doctor = await Doctor.findById(doctorId);
                 if (!doctor) {
                     return res.status(404).send({ success: false, message: 'Doctor not found' });
                 }
-                if (!available_days || Object.keys(available_days).length === 0) {
+                let available_for_purse;
+                let available_days_purse;
+                if (available_for) {
+                    available_for_purse = JSON.parse(available_for);
+                }
+                if (available_days) {
+                    available_days_purse = JSON.parse(available_days);
+                }
+                if (available_days_purse && Object.keys(available_days_purse).length === 0) {
                     return res.status(400).send({ success: false, message: 'available days are required' });
                 }
-                let data = {}
-                Object.keys(available_days).forEach((key) => {
-                    if (!available_days[key]?.startTime, !available_days[key]?.endTime) {
-                        res.status(400).send({ success: false, message: 'startTime and endTime are required' });
-                    }
-                    const timeSlots = generateTimeSlots(req?.body?.available_days[key]?.startTime, req?.body?.available_days[key]?.endTime)
-                    data[key] = timeSlots
-                })
-                //console.log(data)
-                const filesToDelete = [];
-                if (img) {
-                    if (doctor.img) {
-                        filesToDelete.push(doctor.img);
-                    }
-                    data.img = img[0].path;
+                if (available_days_purse) {
+                    Object.keys(available_days_purse).forEach((key) => {
+                        if ((!available_days_purse[key]?.startTime && available_days_purse[key]?.endTime) || (available_days_purse[key]?.startTime && !available_days_purse[key]?.endTime)) {
+                            timeError = { message: `missing ${available_days_purse[key]?.startTime ? 'endTime' : 'startTime'} for ${key}` }
+                        } else if ((available_days_purse[key]?.startTime && available_days_purse[key]?.endTime) && (available_days_purse[key]?.startTime === available_days_purse[key]?.endTime)) {
+                            timeError = { message: `invalid ${available_days_purse[key]?.startTime ? 'endTime' : 'startTime'} for ${key}` }
+                        } else if (available_days_purse[key]?.startTime && available_days_purse[key]?.endTime) {
+                            try {
+                                const timeSlots = generateTimeSlots(available_days_purse[key]?.startTime, available_days_purse[key]?.endTime)
+                                data[key] = timeSlots
+                            } catch (error) {
+                                return res.status(400).send({ success: false, message: error.message || 'invalid time' })
+                            }
+                        }
+                    })
                 }
-                if (license) {
-                    if (doctor.license) {
-                        filesToDelete.push(doctor.license);
-                    }
-                    data.license = license[0].path;
+                if (timeError?.message) {
+                    return res.status(400).send({ success: false, message: timeError?.message })
+                }
+                const availableDaysCheck = checkMissingDays(data, available_for_purse || doctor?.available_for)
+                if (availableDaysCheck) {
+                    return res.status(400).send({ success: false, message: "There are days in 'data' that don't exist in 'availableTime" })
+                }
+                const filesToDelete = [];
+                if (doctor.img) {
+                    filesToDelete.push(doctor.img);
+                }
+                if (doctor.license) {
+                    filesToDelete.push(doctor.license);
                 }
                 const result = await Doctor.updateOne({ _id: doctorId }, {
                     $set: {
                         ...otherInfo,
-                        available_days: data,
+                        available_for: available_for_purse,
+                        available_days: Object.keys(data).length === 0 ? doctor.available_days : data,
+                        img: img?.[0]?.path || doctor.img,
+                        license: license?.[0]?.path || doctor.license
                     }
                 })
                 UnlinkFiles(filesToDelete);
