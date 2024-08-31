@@ -55,6 +55,9 @@ const AppointmentSchema = new Schema({
         required: [true, 'Review is required'],
         enum: [true, false],
         default: false,
+    },
+    notes: {
+        type: String
     }
 }, { timestamps: true });
 

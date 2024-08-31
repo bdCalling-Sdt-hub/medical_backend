@@ -16,6 +16,9 @@ const CreateAppointment = async (req, res) => {
                     return res.status(403).send({ success: false, message: 'forbidden access' });
                 }
                 const { date, time, day } = req.body;
+                if (new Date(date) < new Date()) {
+                    return res.status(400).send({ success: false, message: 'Date must be in the future date' });
+                }
                 const { doctorId } = req.params;
                 if (!date || !time || !day) {
                     return res.status(400).send({ success: false, message: 'Date , Time and Day are required' });
@@ -68,6 +71,9 @@ const UpdateAppointments = async (req, res) => {
             try {
                 const { id } = req.user
                 const { date, time, day, _id } = req.body;
+                if (new Date(date) < new Date()) {
+                    return res.status(400).send({ success: false, message: 'Date must be in the future date' });
+                }
                 const { doctorId } = req.params;
                 if (!date || !time || !day) {
                     return res.status(400).send({ success: false, message: 'Date , Time and Day are required' });
@@ -93,7 +99,7 @@ const UpdateAppointments = async (req, res) => {
                     data.prescription = pres
                 }
                 const result = await Appointment.updateOne({ _id: ExistingAppointment[0]._id }, data);
-                await CreateNotification({ userId: id, doctorId, appointmentId: ExistingAppointment[0]._id, message: 'Appointment Request updated', body: `${req.user?.name}updated an appointments request` }, req.user);
+                await CreateNotification({ userId: id, doctorId, appointmentId: ExistingAppointment[0]._id, message: req?.body?.notes || 'Appointment Request updated', body: `${req.user?.name}updated an appointments request` }, req.user);
                 return res.status(200).send({ success: true, data: result, message: 'Appointment Request updated Successfully' });
 
             } catch (error) {

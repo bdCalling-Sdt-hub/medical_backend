@@ -77,11 +77,15 @@ const GetAllReview = async (req, res) => {
         const { id } = req.user
         const { search, receiverId, ...queryKeys } = req.query;
         const searchKey = {}
+        let populatePaths = ["receiver", "sender"]
+        let selectFields = ['name email phone location _id img specialization', 'name email phone location _id img age'];
         if (search) searchKey.name = search
         if (req?.user?.role !== 'ADMIN') {
             queryKeys.receiver = receiverId
+            populatePaths = ["sender"]
+            selectFields = ['name email phone location _id img age'];
         }
-        const result = await Queries(Review, queryKeys, searchKey, populatePath = "receiver", selectFields = "name email phone location _id img specialization rating total_rated");
+        const result = await Queries(Review, queryKeys, searchKey, populatePath = populatePaths, selectFields = selectFields);
         return res.status(200).send({ success: true, data: result })
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error })
