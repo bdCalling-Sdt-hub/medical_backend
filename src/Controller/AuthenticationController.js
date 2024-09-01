@@ -14,6 +14,7 @@ const Category = require("../Models/CategoryModel");
 const { generateTimeSlots } = require("../utils/GenarateTime");
 const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 const checkMissingDays = require("../utils/AvailableForValidation");
+const Appointment = require("../Models/AppointmentModel");
 // Clear Cookie
 
 
@@ -446,13 +447,18 @@ const ResetPassword = async (req, res) => {
 const GetProfile = async (req, res) => {
     const { email, role } = req.user;
     try {
-        let result;
         if (role === 'DOCTOR') {
-            result = await Doctor.findOne({ email: email })
+            const result = await Doctor.findOne({ email: email })
+            const total_appointments = await Appointment.countDocuments({ doctorId: result?._id, status: "completed" })
+            const data = {
+                ...result?._doc,
+                total_appointments: total_appointments || 0
+            }
+            return res.status(200).send({ success: true, data });
         } else {
-            result = await User.findOne({ email: email })
+            const result = await User.findOne({ email: email })
+            return res.status(200).send({ success: true, data: result });
         }
-        res.status(200).send({ success: true, data: result });
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }

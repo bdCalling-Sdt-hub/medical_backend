@@ -1,15 +1,29 @@
 const Doctor = require("../Models/DoctorModel");
+const FavoriteDoctorModel = require("../Models/FavoriteDoctorModel");
 const User = require("../Models/UserModel");
 const Queries = require("../utils/Queries");
 // get all doctors
 const GetAllDoctors = async (req, res) => {
     try {
+        const { id } = req.user
         const { search, ...queryKeys } = req.query;
         const searchKey = {}
         queryKeys.block = false
         if (search) searchKey.name = search
-        const result = await Queries(Doctor, queryKeys, searchKey);
-        res.status(200).send({ ...result });
+        const [result, favorite] = await Promise.all([
+            Queries(Doctor, queryKeys, searchKey),
+            FavoriteDoctorModel.find({ userId: id })
+        ])
+
+        const data = result?.data?.map((item) => {
+            const isFavorite = favorite.some((fav) => fav.doctorId.toString() === item._id.toString())
+            return { ...item._doc, isFavorite }
+        })
+        const formateData = { data, success: true }
+        if (result?.pagination) {
+            formateData.pagination = result?.pagination
+        }
+        res.status(200).send({ ...formateData });
     } catch (err) {
         res.status(500).send({ success: false, message: err?.message || 'Internal server error', ...err });
     }
@@ -57,13 +71,26 @@ const BlockDoctor = async (req, res) => {
 // get Popular doctor
 const GetPopularDoctor = async (req, res) => {
     try {
+        const { id } = req.user
         const { search, ...queryKeys } = req.query;
         const searchKey = {}
         queryKeys.block = false
         queryKeys.rating = { $gte: 4.5 }
         if (search) searchKey.name = search
-        const result = await Queries(Doctor, queryKeys, searchKey);
-        res.status(200).send({ success: true, ...result });
+        const [result, favorite] = await Promise.all([
+            Queries(Doctor, queryKeys, searchKey),
+            FavoriteDoctorModel.find({ userId: id })
+        ])
+
+        const data = result?.data?.map((item) => {
+            const isFavorite = favorite.some((fav) => fav.doctorId.toString() === item._id.toString())
+            return { ...item._doc, isFavorite }
+        })
+        const formateData = { data, success: true }
+        if (result?.pagination) {
+            formateData.pagination = result?.pagination
+        }
+        res.status(200).send({ ...formateData });
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
@@ -81,8 +108,20 @@ const GetRecommendedDoctor = async (req, res) => {
         queryKeys.order = 'esc'
         // queryKeys.rating = { $gte: 4.5 }
         if (search) searchKey.name = search
-        const result = await Queries(Doctor, queryKeys, searchKey);
-        res.status(200).send({ success: true, ...result });
+        const [result, favorite] = await Promise.all([
+            Queries(Doctor, queryKeys, searchKey),
+            FavoriteDoctorModel.find({ userId: id })
+        ])
+
+        const data = result?.data?.map((item) => {
+            const isFavorite = favorite.some((fav) => fav.doctorId.toString() === item._id.toString())
+            return { ...item._doc, isFavorite }
+        })
+        const formateData = { data, success: true }
+        if (result?.pagination) {
+            formateData.pagination = result?.pagination
+        }
+        res.status(200).send({ ...formateData });
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
@@ -92,7 +131,8 @@ const GetSingleDoctor = async (req, res) => {
     const { doctorId } = req.params
     try {
         const result = await Doctor.findOne({ _id: doctorId })
-        res.status(200).send({ success: true, data: result });
+        const similarDoctor = await Doctor.find({ specialization: result.specialization, _id: { $ne: doctorId } }).sort({ rating: -1 }).limit(10)
+        res.status(200).send({ success: true, data: { doctor: result, similarDoctor } });
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }

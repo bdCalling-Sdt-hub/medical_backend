@@ -75,6 +75,11 @@ const DoctorModel = new Schema({
         type: String,
         required: [true, 'name is required'],
     },
+    "appointment_fee": {
+        type: Number,
+        required: [true, 'Number is required'],
+        default: 0
+    },
     "email": {
         type: String,
         required: [true, 'email is required'],
