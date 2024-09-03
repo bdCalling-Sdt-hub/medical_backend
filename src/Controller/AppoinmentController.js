@@ -69,7 +69,7 @@ const UpdateAppointments = async (req, res) => {
                 return res.status(400).send({ success: false, message: err.message });
             }
             try {
-                const { id } = req.user
+                const { id, role } = req.user
                 const { date, time, day, _id } = req.body;
                 if (new Date(date) < new Date()) {
                     return res.status(400).send({ success: false, message: 'Date must be in the future date' });
@@ -93,7 +93,7 @@ const UpdateAppointments = async (req, res) => {
                     return res.status(404).send({ success: false, message: 'Appointment Not Found' });
                 }
                 const { prescription } = req.files || [];
-                const data = { ...req.body, doctorId, userId: req.user.id, name: Existingdoctor.name, }
+                const data = { ...req.body, doctorId, userId: req.user.id, name: Existingdoctor.name, reSchedule_by: role, reSchedule: true }
                 if (prescription) {
                     const pres = prescription?.map(file => file.path)
                     data.prescription = pres

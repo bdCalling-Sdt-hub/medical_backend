@@ -68,7 +68,7 @@ app.use(globalErrorHandler);
 
 const main = async () => {
   await connectDB()
-  app.listen(port, '192.168.10.6', () => {
+  app.listen(port, '103.161.9.133', () => {
     console.log(`Server is running on port ${port}`);
   });
 }

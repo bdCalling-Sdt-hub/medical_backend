@@ -36,8 +36,10 @@ const Payment = async (req, res) => {
 const SavePayment = async (req, res) => {
     try {
         const newPayment = new PaymentModel(req.body)
-        await Appointment.updateOne({ doctorId: req.body?.doctorId }, { status: 'completed' });
-        const result = await newPayment.save();
+        const [result] = await Promise.all([
+            await newPayment.save(),
+            await Appointment.updateOne({ doctorId: req.body?.doctorId, userId: req.body?.userId }, { payment_status: true })
+        ])
         res.status(200).send({ success: true, message: "Payment created successfully", data: result });
     } catch (error) {
         res.status(500).send({ success: false, message: "Internal server error", ...error });

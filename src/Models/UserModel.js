@@ -5,7 +5,7 @@ const HashPassword = require('../utils/HashPassword'); // Import the HashPasswor
 const UserModel = new Schema({
     'img': {
         type: String,
-        required: true,
+        required: false,
         default: null
     },
     "name": {

@@ -58,6 +58,18 @@ const AppointmentSchema = new Schema({
     },
     notes: {
         type: String
+    },
+    reSchedule: {
+        type: Boolean,
+        default: false
+    },
+    reSchedule_by: {
+        type: String,
+        enum: ['DOCTOR', 'USER'],
+    },
+    payment_status: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 

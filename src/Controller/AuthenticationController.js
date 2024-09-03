@@ -118,7 +118,6 @@ const SignUp = async (req, res) => {
 const SignIn = async (req, res) => {
     try {
         const { email, password } = req.body
-        //  console.log(email, password)
         const [user, doctor] = await Promise.all([
             User.findOne({ email: email }),
             Doctor.findOne({ email: email })
@@ -153,7 +152,7 @@ const SignIn = async (req, res) => {
                 }
                 const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
                 res.status(200).send({
-                    success: true, data: user || doctor, token
+                    success: true, message: 'login successfully', data: user || doctor, token
 
                 });
             } else {
@@ -335,7 +334,7 @@ const SendVerifyEmail = async (req, res) => {
                 SendEmail({
                     sender: 'medical',
                     receiver: user?.email,
-                    subject: 'register user successfully',
+                    subject: 'verification email',
                     msg: `<h1> hallow ${user?.name} </h1/>
                 <p>your password reset code is : <strong>${activationCode}</strong> </p>
                 <p>Thank you </p>
@@ -356,7 +355,7 @@ const SendVerifyEmail = async (req, res) => {
 
 //verify code
 const VerifyCode = async (req, res) => {
-    const { code, email } = req.body
+    const { code, email } = req.body;
     try {
         const [verify, user, doctor] = await Promise.all([
             Verification.findOne({ email: email, code: code }),
