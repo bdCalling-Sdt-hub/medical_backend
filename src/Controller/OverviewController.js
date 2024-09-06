@@ -78,7 +78,7 @@ const GetDoctorOverview = async (req, res) => {
 const GetAdminOverview = async (req, res) => {
     try {
         const { role } = req.user
-        if (req.user?.role !== "ADMIN") {
+        if (role !== "ADMIN") {
             return res.status(401).send({ success: false, message: "unauthorized access" })
         }
         const [income, total_doctor, total_user, total_appointment] = await Promise.all([

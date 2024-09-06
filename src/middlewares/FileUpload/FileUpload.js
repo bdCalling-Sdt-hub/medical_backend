@@ -36,10 +36,10 @@ const uploadFile = () => {
         storage: storage,
         fileFilter: fileFilter,
     }).fields([
-        { name: 'img', maxCount: 4 },
+        { name: 'img', maxCount: 10 },
         { name: 'video', maxCount: 1 },
         { name: 'license', maxCount: 1 },
-        { name: 'prescription', maxCount: 1 },
+        { name: 'prescription', maxCount: 10 },
         { name: 'kycFront', maxCount: 1 },
         { name: 'kycBack', maxCount: 1 },
     ]);

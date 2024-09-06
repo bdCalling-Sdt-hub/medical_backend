@@ -34,6 +34,11 @@ const PaymentSchema = new Schema({
     doctor_amount: {
         type: Number,
         required: true
+    },
+    AppointmentId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Appointment',
+        required: [true, 'Appointment is required'],
     }
 })
 PaymentSchema.pre('save', function (next) {

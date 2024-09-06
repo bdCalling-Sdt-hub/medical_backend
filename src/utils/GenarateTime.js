@@ -40,7 +40,6 @@ const generateTimeSlots = (startTime, endTime) => {
         throw error || new Error(`Error in generateTimeSlots: ${error}`);
     }
 };
-
 const parseTime = (time) => {
     try {
         const [timeString, meridian] = time.split(' ');

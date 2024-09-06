@@ -16,7 +16,10 @@ const CreateAppointment = async (req, res) => {
                     return res.status(403).send({ success: false, message: 'forbidden access' });
                 }
                 const { date, time, day } = req.body;
-                if (new Date(date) < new Date()) {
+                const [month, Day, year] = date.split('-');
+                // console.log(new Date(Date.UTC(year, month - 1, Day)) , new Date())
+                // return res.status(400).send({ success: false, message: 'Date must be in the future date' });
+                if (new Date(Date.UTC(year, month - 1, Day)).toISOString().split('T')[0] < new Date().toISOString().split('T')[0]) {
                     return res.status(400).send({ success: false, message: 'Date must be in the future date' });
                 }
                 const { doctorId } = req.params;
@@ -29,7 +32,7 @@ const CreateAppointment = async (req, res) => {
                 };
                 const [Existingdoctor, ExistingAppointment] = await Promise.all([
                     Doctor.findOne(query),
-                    Appointment.find({ doctorId, day, time, date: new Date(date).toISOString() })
+                    Appointment.find({ doctorId, day, time, date: new Date(Date.UTC(year, month - 1, Day)).toISOString() })
                 ])
                 if (!Existingdoctor) {
                     return res.status(404).send({ success: false, message: 'Doctor Not Available For Appointment' });
@@ -37,12 +40,14 @@ const CreateAppointment = async (req, res) => {
                 if (ExistingAppointment.length > 0 && ExistingAppointment[0].userId.toString() !== req.user.id) {
                     return res.status(404).send({ success: false, message: 'Doctor Not Available For Appointment' });
                 } else if (ExistingAppointment.length > 0 && ExistingAppointment[0].userId.toString() === req.user.id) {
-                    const result = await Appointment.updateOne({ _id: ExistingAppointment[0]._id }, { ...req.body, doctorId, userId: req.user.id, name: Existingdoctor.name });
-                    await CreateNotification({ userId: req.user.id, doctorId, appointmentId: ExistingAppointment[0]._id, message: 'New Appointment Request', body: `${req.user?.name} requested for a new appointments` }, req.user);
-                    return res.status(200).send({ success: true, data: result, message: 'Appointment Request updated Successfully' });
+                    return res.status(200).send({ success: false, message: 'Appointment Request Already Sent' });
+                    // } else if (ExistingAppointment.length > 0 && ExistingAppointment[0].userId.toString() === req.user.id) {
+                    //     const result = await Appointment.updateOne({ _id: ExistingAppointment[0]._id }, { ...req.body, doctorId, userId: req.user.id, name: Existingdoctor.name });
+                    //     await CreateNotification({ userId: req.user.id, doctorId, appointmentId: ExistingAppointment[0]._id, message: 'New Appointment Request', body: `${req.user?.name} requested for a new appointments` }, req.user);
+                    //     return res.status(200).send({ success: true, data: result, message: 'Appointment Request updated Successfully' });
                 } else {
                     const { prescription } = req.files || [];
-                    const data = { ...req.body, doctorId, userId: req.user.id, name: Existingdoctor.name, }
+                    const data = { ...req.body, date: new Date(Date.UTC(year, month - 1, Day)), doctorId, userId: req.user.id, name: Existingdoctor.name, }
                     if (prescription) {
                         const pres = prescription?.map(file => file.path)
                         data.prescription = pres
@@ -70,30 +75,36 @@ const UpdateAppointments = async (req, res) => {
             }
             try {
                 const { id, role } = req.user
-                const { date, time, day, _id } = req.body;
-                if (new Date(date) < new Date()) {
+                const { date, time, day, appointmentId } = req.body;
+                const [month, Day, year] = "6-15-2024".split('-');
+                if (new Date(Date.UTC(year, month - 1, Day)) < new Date()) {
                     return res.status(400).send({ success: false, message: 'Date must be in the future date' });
                 }
                 const { doctorId } = req.params;
                 if (!date || !time || !day) {
                     return res.status(400).send({ success: false, message: 'Date , Time and Day are required' });
                 }
+
                 const query = {
                     _id: doctorId,
                     [`available_days.${day}`]: { $in: time }
                 };
                 const [Existingdoctor, ExistingAppointment] = await Promise.all([
                     Doctor.findOne(query),
-                    Appointment.find({ doctorId, userId: id, _id: _id })
+                    Appointment.find({ doctorId: doctorId, _id: appointmentId })
                 ])
+                console.log(ExistingAppointment)
                 if (!Existingdoctor) {
                     return res.status(404).send({ success: false, message: 'Doctor Not Available For Appointment' });
                 }
-                if (ExistingAppointment.length <= 0 || ExistingAppointment[0].userId.toString() !== id) {
+                if (ExistingAppointment.length <= 0) {
                     return res.status(404).send({ success: false, message: 'Appointment Not Found' });
                 }
+                if (ExistingAppointment[0].userId.toString() !== id && role !== 'ADMIN' && ExistingAppointment[0].doctorId.toString() !== doctorId) {
+
+                }
                 const { prescription } = req.files || [];
-                const data = { ...req.body, doctorId, userId: req.user.id, name: Existingdoctor.name, reSchedule_by: role, reSchedule: true }
+                const data = { ...req.body, date: new Date(Date.UTC(year, month - 1, Day)), doctorId: Existingdoctor?.doctorId, userId: Existingdoctor?.userId, name: Existingdoctor.name, reSchedule_by: role, reSchedule: true }
                 if (prescription) {
                     const pres = prescription?.map(file => file.path)
                     data.prescription = pres
@@ -113,7 +124,7 @@ const UpdateAppointments = async (req, res) => {
 // get all appointments
 const GetAllAppointments = async (req, res) => {
     try {
-        const { id } = req.user
+        const { id } = req.user;
         const { search, type, status, ...queryKeys } = req.query;
         let populatepaths = ['doctorId', 'userId'];
         let selectField = ['name email phone location _id img specialization', 'name email phone location _id img age'];
@@ -142,8 +153,14 @@ const GetAllAppointments = async (req, res) => {
                 $gte: new Date().toISOString(),
                 $lte: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString()
             };
+        } else if (type && type === 'today') {
+            queryKeys.date = { $in: new Date().toISOString().split('T')[0] }
         } else {
             queryKeys.date = { $gte: new Date().toISOString() }
+        }
+        if (!queryKeys.sort) {
+            queryKeys.sort = 'createdAt'
+            queryKeys.order = 'desc'
         }
         const result = await Queries(Appointment, queryKeys, searchKey, populatePath = populatepaths, selectFields = selectField);
         res.status(200).send({ ...result });
@@ -196,10 +213,17 @@ const UpdateAppointmentStatus = async (req, res) => {
         if (!Appointments) {
             return res.status(404).send({ success: false, message: 'Appointment Not Found' });
         }
-        if (id !== Appointments.userId || id !== Appointments.doctorId || role !== 'ADMIN') {
+        if (id !== Appointments.userId.toString() && id !== Appointments.doctorId.toString() && role !== 'ADMIN') {
             return res.status(403).send({ success: false, message: 'Forbidden access' });
         }
-        const result = await Appointment.updateOne({ _id: appointmentId }, { $set: { status: status } });
+        if ((Appointments?.reSchedule && status === 'accepted' && (Appointments?.reSchedule_by && Appointments?.reSchedule_by === role)) || (!Appointments?.reSchedule && (role !== 'ADMIN' && role !== 'DOCTOR'))) {
+            return res.status(403).send({ success: false, message: 'Forbidden access' });
+        }
+        if (status === 'rejected' && Appointments?.payment_status === true) {
+            return res.status(403).send({ success: false, message: "can't reject appointment after payment" });
+        }
+        const result = await Appointment.updateOne({ _id: appointmentId }, { $set: { status } });
+        await CreateNotification({ userId: Appointments.userId, doctorId: Appointments.doctorId, appointmentId: appointmentId, message: req?.body?.notes || `Appointment ${status}`, body: `${role} Canceled the appointments request` }, req.user);
         res.status(200).send({ success: true, data: result, message: 'Appointment Status Updated Successfully' });
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });

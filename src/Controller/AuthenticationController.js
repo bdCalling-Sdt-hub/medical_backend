@@ -383,9 +383,18 @@ const VerifyCode = async (req, res) => {
                     }
                 })
             }
-
+            const userData = {
+                email: user?.email || doctor?.email,
+                phone: user?.phone || doctor?.phone,
+                verified: user?.verified || doctor?.verified,
+                name: user?.name || doctor?.name,
+                role: user?.role || doctor?.role,
+                access: user?.access || doctor?.access,
+                id: user?._id || doctor?._id
+            }
+            const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
             const accessToken = await jwt.sign({ code, email }, ACCESS_TOKEN_SECRET, { expiresIn: 600 });
-            res.status(200).send({ success: true, accessToken, message: `${type || 'user'} verified successfully` })
+            res.status(200).send({ success: true, accessToken, token, message: `${type || 'user'} verified successfully` })
         } else {
             res.status(401).send({ success: false, message: "verification code doesn't match" });
         }
@@ -614,6 +623,7 @@ const updateDoctor = async (req, res) => {
                 if (available_days_purse && Object.keys(available_days_purse).length === 0) {
                     return res.status(400).send({ success: false, message: 'available days are required' });
                 }
+                // console.log({ available_days_purse, available_for_purse })
                 if (available_days_purse) {
                     Object.keys(available_days_purse).forEach((key) => {
                         if ((!available_days_purse[key]?.startTime && available_days_purse[key]?.endTime) || (available_days_purse[key]?.startTime && !available_days_purse[key]?.endTime)) {
@@ -674,8 +684,6 @@ const updateDoctor = async (req, res) => {
         res.status(500).send({ success: false, ...error, message: error?.message || 'Internal server error', });
     }
 };
-
-
 
 module.exports = {
     SignUp,

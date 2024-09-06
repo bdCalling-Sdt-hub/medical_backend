@@ -250,8 +250,8 @@ const GetDoctorPaymentHistory = async (req, res) => {
         if (req?.user?.role !== "ADMIN") {
             queryKeys.doctorId = req?.user?.id
         }
-        const result = await Queries(DoctorPaymentModel, queryKeys, searchKey);
-        res.status(200).send({ success: true, message: "Payment history", data: result })
+        const result = await Queries(DoctorPaymentModel, queryKeys, searchKey);//, populatePath = 'userId'
+        res.status(200).send({ ...result })
     } catch (error) {
         res.status(500).send({ success: false, message: "Internal server error", ...error })
     }
