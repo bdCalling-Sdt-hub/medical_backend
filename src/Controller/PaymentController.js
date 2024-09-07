@@ -36,8 +36,10 @@ const Payment = async (req, res) => {
 const SavePayment = async (req, res) => {
     try {
         const newPayment = new PaymentModel(req.body)
-        await Appointment.updateOne({ doctorId: req.body?.doctorId }, { status: 'completed' });
-        const result = await newPayment.save();
+        const [result] = await Promise.all([
+            await newPayment.save(),
+            await Appointment.updateOne({ doctorId: req.body?.doctorId, userId: req.body?.userId }, { payment_status: true })
+        ])
         res.status(200).send({ success: true, message: "Payment created successfully", data: result });
     } catch (error) {
         res.status(500).send({ success: false, message: "Internal server error", ...error });
@@ -232,7 +234,7 @@ const UserGetPaymentHistory = async (req, res) => {
             queryKeys.userId = req?.user?.id
         }
         const result = await Queries(PaymentModel, queryKeys, searchKey);
-        res.status(200).send({ success: true, message: "Payment history", data: result })
+        res.status(200).send({ success: true, message: "Payment history", ...result })
     } catch (error) {
         res.status(500).send({ success: false, message: "Internal server error", ...error })
     }
@@ -248,8 +250,8 @@ const GetDoctorPaymentHistory = async (req, res) => {
         if (req?.user?.role !== "ADMIN") {
             queryKeys.doctorId = req?.user?.id
         }
-        const result = await Queries(DoctorPaymentModel, queryKeys, searchKey);
-        res.status(200).send({ success: true, message: "Payment history", data: result })
+        const result = await Queries(DoctorPaymentModel, queryKeys, searchKey);//, populatePath = 'userId'
+        res.status(200).send({ ...result })
     } catch (error) {
         res.status(500).send({ success: false, message: "Internal server error", ...error })
     }
@@ -353,6 +355,32 @@ const GetAvailablePayment = async (req, res) => {
         res.status(500).send({ success: false, message: "Internal server error", ...error });
     }
 };
+// get my card status 
+const GetMyCard = async (req, res) => {
+    try {
+        const { id } = req.user;
+        const result = await StripeAccountModel.findOne({ doctorId: id });
+        res.status(200).send({ success: true, data: result })
+    } catch (error) {
+        res.status(500).send({ success: false, message: error?.message || "Internal server error", ...error })
+    }
+}
+const GetTotalBalance = async (req, res) => {
+    try {
+        const { search, ...queryKeys } = req.query;
+        const searchKey = {}
+        if (req.user?.role === "USER") {
+            return res.status(401).send({ success: false, message: "unauthorized access" })
+        }
+        if (req?.user?.role !== "ADMIN") {
+            queryKeys.doctorId = req?.user?.id
+        }
+        const result = await Queries(PaymentModel, queryKeys, searchKey);
+        res.status(200).send({ success: true, message: "Available Payment", data: result })
+    } catch (error) {
+        res.status(500).send({ success: false, message: "Internal server error", ...error })
+    }
+}
 
 // const GetAvailablePayment = async (req, res) => {
 //     try {
@@ -373,6 +401,6 @@ const GetAvailablePayment = async (req, res) => {
 //         res.status(500).send({ success: false, message: "Internal server error", ...error })
 //     }
 // }
-module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment }
+module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment, GetMyCard }
 
 

@@ -13,7 +13,7 @@ const CreateFaq = async (req, res) => {
         const result = await FaqModel.create({ question, answer })
         res.send({ success: true, data: result, message: 'Faq Created Successfully' })
     } catch (error) {
-        let duplicateKeys = [];
+        let duplicateKeys = '';
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
             error.duplicateKeys = duplicateKeys;
@@ -23,7 +23,7 @@ const CreateFaq = async (req, res) => {
             requiredField = FormateRequiredFieldMessage(error?.errors);
             error.requiredField = requiredField;
         }
-        res.send({ success: false, ...error, message: 'Internal Server Error' })
+        res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });
     }
 }
 
@@ -36,7 +36,7 @@ const GetAllFaq = async (req, res) => {
         const result = await Queries(FaqModel, queryKeys, searchKey);
         res.send({ ...result });
     } catch (error) {
-        res.send({ success: false, error: { message: 'Internal server error', error } });
+        res.send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 // delete faq
@@ -53,7 +53,7 @@ const DeleteFaq = async (req, res) => {
         const result = await FaqModel.findByIdAndDelete(faqId)
         res.send({ success: true, data: result, message: 'Faq Deleted Successfully' })
     } catch (error) {
-        res.send({ success: false, error, message: 'Internal Server Error' })
+        res.send({ success: false, ...error, message: error?.message || 'Internal server error', })
     }
 }
 //update Faq 
@@ -71,7 +71,7 @@ const UpdateFaq = async (req, res) => {
         const result = await FaqModel.findByIdAndUpdate(faqId, { question, answer })
         res.send({ success: true, data: result, message: 'Faq Updated Successfully' })
     } catch (error) {
-        res.send({ success: false, ...error, message: 'Internal Server Error' })
+        res.send({ success: false, ...error, message: error?.message || 'Internal server error', })
     }
 }
 module.exports = {

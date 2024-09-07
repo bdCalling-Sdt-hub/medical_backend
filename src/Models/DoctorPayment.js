@@ -10,6 +10,11 @@ const DoctorPaymentSchema = new Schema({
         type: Number,
         required: [true, 'amount is required']
     },
+    // userId: {
+    //     type: Schema.Types.ObjectId,
+    //     ref: 'User',
+    //     required: [true, 'User Id is required']
+    // },
     fee: {
         type: Number,
         required: [true, 'amountPaid is required']

@@ -1,19 +1,24 @@
 const { model, Schema } = require('mongoose');
 const BannerModel = new Schema({
     order: {
-        type: String,
+        type: Number,
         required: [true, 'Order is required'],
         unique: true,
-        default: 0
+        default: 1
     },
     img: {
         type: String,
         required: [true, 'image is required']
     },
+    isActive: {
+        type: Boolean,
+        required: [true, 'isActive is required'],
+        default: true
+    }
 }, { timestamps: true })
 BannerModel.pre('save', async function (next) {
-    const totalBanners = await Banner.countDocuments();
-    this.order = totalBanners + 1;
+    const highestOrderBanner = await Banner.findOne({}).sort({ order: -1 });
+    this.order = highestOrderBanner ? Number(highestOrderBanner.order) + 1 : 1;
     next();
 });
 

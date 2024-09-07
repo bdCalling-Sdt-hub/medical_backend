@@ -14,7 +14,7 @@ const GetCategories = async (req, res) => {
         const result = await Queries(Category, queryKeys, searchKey);
         res.status(200).send({ ...result });
     } catch (error) {
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 
@@ -31,11 +31,11 @@ const CreateCategory = async (req, res) => {
             const { img } = req.files || {};
             const { name } = req.body
             try {
-                const newCategory = new Category({ img: img?.[0]?.path, name  });
+                const newCategory = new Category({ img: img?.[0]?.path, name });
                 const result = await newCategory.save();
                 res.status(201).send({ success: true, data: result });
             } catch (error) {
-                let duplicateKeys = [];
+                let duplicateKeys = '';
                 if (error?.keyValue) {
                     duplicateKeys = FormateErrorMessage(error);
                     error.duplicateKeys = duplicateKeys;
@@ -45,11 +45,11 @@ const CreateCategory = async (req, res) => {
                     requiredField = FormateRequiredFieldMessage(error?.errors);
                     error.requiredField = requiredField;
                 }
-                res.status(500).send({ success: false, message: 'Internal server error', ...error });
+                res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });
             }
         });
     } catch (error) {
-        let duplicateKeys = [];
+        let duplicateKeys = '';
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
             error.duplicateKeys = duplicateKeys;
@@ -59,7 +59,7 @@ const CreateCategory = async (req, res) => {
             requiredField = FormateRequiredFieldMessage(error?.errors);
             error.requiredField = requiredField;
         }
-        res.status(500).send({ success: false, message: 'Internal server error', ...error });
+        res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });
     }
 }
 
@@ -80,7 +80,7 @@ const DeleteCategory = async (req, res) => {
         }
         res.status(200).send({ success: true, data: result, message: 'category deleted successfully' });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 // update Category
@@ -112,11 +112,11 @@ const UpdateCategory = async (req, res) => {
                 });
                 res.status(200).send({ success: true, message: 'Category Updated successfully', data: result });
             } catch (error) {
-                res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+                res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
             }
         });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', ...error } });
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }
 }
 
