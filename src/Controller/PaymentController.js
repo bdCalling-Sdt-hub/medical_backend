@@ -355,6 +355,16 @@ const GetAvailablePayment = async (req, res) => {
         res.status(500).send({ success: false, message: "Internal server error", ...error });
     }
 };
+// get my card status 
+const GetMyCard = async (req, res) => {
+    try {
+        const { id } = req.user;
+        const result = await StripeAccountModel.findOne({ doctorId: id });
+        res.status(200).send({ success: true, data: result })
+    } catch (error) {
+        res.status(500).send({ success: false, message: error?.message || "Internal server error", ...error })
+    }
+}
 const GetTotalBalance = async (req, res) => {
     try {
         const { search, ...queryKeys } = req.query;
@@ -371,6 +381,7 @@ const GetTotalBalance = async (req, res) => {
         res.status(500).send({ success: false, message: "Internal server error", ...error })
     }
 }
+
 // const GetAvailablePayment = async (req, res) => {
 //     try {
 //         const { search, ...queryKeys } = req.query;
@@ -390,6 +401,6 @@ const GetTotalBalance = async (req, res) => {
 //         res.status(500).send({ success: false, message: "Internal server error", ...error })
 //     }
 // }
-module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment }
+module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment, GetMyCard }
 
 

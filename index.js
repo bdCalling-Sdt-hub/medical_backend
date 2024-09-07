@@ -2,7 +2,6 @@
 const applyMiddleware = require("./src/middlewares");
 const connectDB = require("./src/db/connectDB");
 const { PORT } = require("./src/config/defaults");
-const { app } = require("./src/Socket");
 const express = require("express")
 const port = PORT || 5000;
 const AuthRoute = require("./src/routes/AuthenticationRoute");
@@ -19,6 +18,9 @@ const AppointmentRoute = require("./src/routes/AppointmentRoute");
 const NotificationRoutes = require("./src/routes/NotificationRoutes");
 const PaymentRoutes = require("./src/routes/PaymentRoutes");
 const OverViewRoutes = require("./src/routes/OverView");
+const socketIO = require("socket.io");
+const socketHelper = require("./src/Socket");
+const app = express();
 applyMiddleware(app);
 
 //routes
@@ -66,10 +68,21 @@ app.all("*", (req, res, next) => {
 // error handling middleware
 app.use(globalErrorHandler);
 
+let server;
 const main = async () => {
   await connectDB()
-  app.listen(port, '103.161.9.133', () => {
+  server = app.listen(port, '103.161.9.133', () => {
     console.log(`Server is running on port ${port}`);
   });
+
+  //socket
+  const io = socketIO(server,{
+    cors:{
+      origin: "*"
+    }}
+  )
+
+  socketHelper(io);
+  global.io = io;
 }
 main()

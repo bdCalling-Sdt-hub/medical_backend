@@ -216,7 +216,8 @@ const UpdateAppointmentStatus = async (req, res) => {
         if (id !== Appointments.userId.toString() && id !== Appointments.doctorId.toString() && role !== 'ADMIN') {
             return res.status(403).send({ success: false, message: 'Forbidden access' });
         }
-        if ((Appointments?.reSchedule && status === 'accepted' && (Appointments?.reSchedule_by && Appointments?.reSchedule_by === role)) || (!Appointments?.reSchedule && (role !== 'ADMIN' && role !== 'DOCTOR'))) {
+        console.log(Appointments.reSchedule === true, status, Appointments.reSchedule_by)
+        if ((Appointments.reSchedule === true && status === 'accepted' && Appointments.reSchedule_by === role) || (Appointments.reSchedule === true && (role !== 'ADMIN' && role !== 'DOCTOR'))) {
             return res.status(403).send({ success: false, message: 'Forbidden access' });
         }
         if (status === 'rejected' && Appointments?.payment_status === true) {

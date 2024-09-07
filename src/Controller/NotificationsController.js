@@ -1,5 +1,4 @@
 const Notification = require("../Models/NotificationModel");
-const { getReceiverSocketId, io } = require("../Socket");
 const Queries = require("../utils/Queries");
 
 //create notification
