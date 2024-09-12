@@ -49,6 +49,7 @@ const AppointmentSchema = new Schema({
     },
     prescription: {
         type: [String],
+        default: []
     },
     review: {
         type: Boolean,
@@ -69,6 +70,11 @@ const AppointmentSchema = new Schema({
     },
     payment_status: {
         type: Boolean,
+        default: false
+    },
+    doctor_payment: {
+        type: Boolean,
+        required: [true, 'Doctor Payment is required'],
         default: false
     }
 }, { timestamps: true });

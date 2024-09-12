@@ -144,53 +144,80 @@ const GetIncomeOverview = async (req, res) => {
         const previousYear = currentYear - 1;
         const currentMonth = new Date().getMonth() + 1;
         const currentDate = new Date().getDate();
-        const currentYearData = await PaymentModel.aggregate([
-            {
-                $match: {
-                    // doctorId: mongoose.Types.ObjectId(doctorId),
-                    // status: 'success',
-                    // payment_doctor: true,
-                    createdAt: {
-                        $gte: new Date(`${currentYear}-01-01`),
-                        $lte: new Date(`${currentYear}-12-31`)
+        const [currentYearData, previousYearData, total_years] = await Promise.all([
+            PaymentModel.aggregate([
+                {
+                    $match: {
+                        // doctorId: mongoose.Types.ObjectId(doctorId),
+                        // status: 'success',
+                        // payment_doctor: true,
+                        createdAt: {
+                            $gte: new Date(`${currentYear}-01-01`),
+                            $lte: new Date(`${currentYear}-12-31`)
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        month: { $month: "$createdAt" },
+                        admin_deduction: { $multiply: ["$amount", 0.03] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { month: "$month" },
+                        total_deduction: { $sum: "$admin_deduction" }
                     }
                 }
-            },
-            {
-                $project: {
-                    month: { $month: "$createdAt" },
-                    admin_deduction: { $multiply: ["$amount", 0.03] }
-                }
-            },
-            {
-                $group: {
-                    _id: { month: "$month" },
-                    total_deduction: { $sum: "$admin_deduction" }
-                }
-            }
-        ]);
-        const previousYearData = await PaymentModel.aggregate([
-            {
-                $match: {
-                    createdAt: {
-                        $gte: new Date(`${previousYear}-01-01`),
-                        $lte: new Date(`${previousYear}-12-31`)
+            ]),
+            PaymentModel.aggregate([
+                {
+                    $match: {
+                        createdAt: {
+                            $gte: new Date(`${previousYear}-01-01`),
+                            $lte: new Date(`${previousYear}-12-31`)
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        month: { $month: "$createdAt" },
+                        admin_deduction: { $multiply: ["$amount", 0.03] } // 3% deduction
+                    }
+                },
+                {
+                    $group: {
+                        _id: { month: "$month" },
+                        total_deduction: { $sum: "$admin_deduction" }
                     }
                 }
-            },
-            {
-                $project: {
-                    month: { $month: "$createdAt" },
-                    admin_deduction: { $multiply: ["$amount", 0.03] } // 3% deduction
+            ]),
+            PaymentModel.aggregate([
+                {
+                    $match: {
+                        createdAt: { $exists: true, $ne: null }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $year: "$createdAt" }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        years: { $addToSet: "$_id" }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        years: 1
+                    }
                 }
-            },
-            {
-                $group: {
-                    _id: { month: "$month" },
-                    total_deduction: { $sum: "$admin_deduction" }
-                }
-            }
-        ]);
+            ])
+        ])
+
         const monthNames = [
             "January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
@@ -235,7 +262,8 @@ const GetIncomeOverview = async (req, res) => {
                 monthlyComparison,
                 dailyComparison,
                 yearlyComparison,
-                currentYear: year || new Date().getFullYear()
+                currentYear: year || new Date().getFullYear(),
+                total_years: total_years?.length > 0 ? total_years?.[0]?.years : [currentYear]
             }
         });
     } catch (error) {
@@ -253,50 +281,77 @@ const GetAppointmentOverview = async (req, res) => {
         const previousYear = currentYear - 1;
         const currentMonth = new Date().getMonth() + 1;
         const currentDate = new Date().getDate();
-        const currentYearData = await Appointment.aggregate([
-            {
-                $match: {
-                    date: {
-                        $gte: new Date(`${currentYear}-01-01`),
-                        $lte: new Date(`${currentYear}-12-31`)
+        const [currentYearData, previousYearData, total_years] = await Promise.all([
+            Appointment.aggregate([
+                {
+                    $match: {
+                        date: {
+                            $gte: new Date(`${currentYear}-01-01`),
+                            $lte: new Date(`${currentYear}-12-31`)
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        month: { $month: "$date" },
+                        day: { $dayOfMonth: "$date" }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { month: "$month", day: "$day" },
+                        total_appointments: { $sum: 1 }
                     }
                 }
-            },
-            {
-                $project: {
-                    month: { $month: "$date" },
-                    day: { $dayOfMonth: "$date" }
-                }
-            },
-            {
-                $group: {
-                    _id: { month: "$month", day: "$day" },
-                    total_appointments: { $sum: 1 }
-                }
-            }
-        ]);
-        const previousYearData = await Appointment.aggregate([
-            {
-                $match: {
-                    date: {
-                        $gte: new Date(`${previousYear}-01-01`),
-                        $lte: new Date(`${previousYear}-12-31`)
+            ]),
+            Appointment.aggregate([
+                {
+                    $match: {
+                        date: {
+                            $gte: new Date(`${previousYear}-01-01`),
+                            $lte: new Date(`${previousYear}-12-31`)
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        month: { $month: "$date" },
+                        day: { $dayOfMonth: "$date" }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { month: "$month", day: "$day" },
+                        total_appointments: { $sum: 1 }
                     }
                 }
-            },
-            {
-                $project: {
-                    month: { $month: "$date" },
-                    day: { $dayOfMonth: "$date" }
+            ]),
+            Appointment.aggregate([
+                {
+                    $match: {
+                        createdAt: { $exists: true, $ne: null }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $year: "$createdAt" }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        years: { $addToSet: "$_id" }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        years: 1
+                    }
                 }
-            },
-            {
-                $group: {
-                    _id: { month: "$month", day: "$day" },
-                    total_appointments: { $sum: 1 }
-                }
-            }
+            ])
         ]);
+
         const monthNames = [
             "January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
@@ -342,7 +397,8 @@ const GetAppointmentOverview = async (req, res) => {
                 monthlyComparison,
                 dailyComparison,
                 yearlyComparison,
-                currentYear: year || new Date().getFullYear()
+                currentYear: year || new Date().getFullYear(),
+                total_years: total_years.length > 0 ? total_years?.[0]?.years : [currentYear]
             }
         });
     } catch (error) {

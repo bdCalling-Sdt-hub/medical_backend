@@ -161,6 +161,11 @@ const DoctorModel = new Schema({
         type: String,
         required: [true, 'license is required'],
     },
+    "license_no": {
+        type: String,
+        required: [true, 'license no is required'],
+        default: null
+    },
     "specialization": {
         type: String,
         required: [true, 'specialization is required'],
@@ -192,6 +197,17 @@ const DoctorModel = new Schema({
         required: [true, 'Rating is required'],
         default: 0,
     },
+    "approved": {
+        type: Boolean,
+        required: true,
+        enum: [true, false],
+        default: false
+    },
+    "desc": {
+        type: String,
+        required: [true, 'desc is required'],
+        default: null
+    }
 }, { timestamps: true });
 
 DoctorModel.pre('save', async function (next) {

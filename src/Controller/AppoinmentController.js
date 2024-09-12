@@ -16,16 +16,17 @@ const CreateAppointment = async (req, res) => {
                     return res.status(403).send({ success: false, message: 'forbidden access' });
                 }
                 const { date, time, day } = req.body;
-                const [month, Day, year] = date.split('-');
+                if (!date || !time || !day) {
+                    return res.status(400).send({ success: false, message: 'Date , Time and Day are required' });
+
+                }
+                const [Day, month, year] = date?.split('-');
                 // console.log(new Date(Date.UTC(year, month - 1, Day)) , new Date())
                 // return res.status(400).send({ success: false, message: 'Date must be in the future date' });
                 if (new Date(Date.UTC(year, month - 1, Day)).toISOString().split('T')[0] < new Date().toISOString().split('T')[0]) {
                     return res.status(400).send({ success: false, message: 'Date must be in the future date' });
                 }
                 const { doctorId } = req.params;
-                if (!date || !time || !day) {
-                    return res.status(400).send({ success: false, message: 'Date , Time and Day are required' });
-                }
                 const query = {
                     _id: doctorId,
                     [`available_days.${day}`]: { $in: time }
@@ -54,7 +55,7 @@ const CreateAppointment = async (req, res) => {
                     }
                     const newAppointment = new Appointment(data);
                     const result = await newAppointment.save();
-                    await CreateNotification({ userId: req.user.id, doctorId, appointmentId: result._id, message: 'New Appointment Request', body: `${req.user?.name} requested for a new appointments` }, req.user);
+                    await CreateNotification({ userId: req.user.id, doctorId, appointmentId: result._id, message: 'New Appointment Request', body: `${req.user?.name} requested for a new appointments`, type: 'appointment' }, req.user);
                     return res.status(200).send({ success: true, data: result, message: 'Appointment Request Send Successfully' });
                 }
             }
@@ -76,7 +77,7 @@ const UpdateAppointments = async (req, res) => {
             try {
                 const { id, role } = req.user
                 const { date, time, day, appointmentId } = req.body;
-                const [month, Day, year] = "6-15-2024".split('-');
+                const [Day, month, year] = date?.split('-');
                 if (new Date(Date.UTC(year, month - 1, Day)) < new Date()) {
                     return res.status(400).send({ success: false, message: 'Date must be in the future date' });
                 }
@@ -110,7 +111,7 @@ const UpdateAppointments = async (req, res) => {
                     data.prescription = pres
                 }
                 const result = await Appointment.updateOne({ _id: ExistingAppointment[0]._id }, data);
-                await CreateNotification({ userId: id, doctorId, appointmentId: ExistingAppointment[0]._id, message: req?.body?.notes || 'Appointment Request updated', body: `${req.user?.name}updated an appointments request` }, req.user);
+                await CreateNotification({ userId: id, doctorId, appointmentId: ExistingAppointment[0]._id, message: req?.body?.notes || 'Appointment Request updated', body: `${req.user?.name} Updated an appointments request`, type: 'appointment' }, req.user);
                 return res.status(200).send({ success: true, data: result, message: 'Appointment Request updated Successfully' });
 
             } catch (error) {
@@ -126,22 +127,24 @@ const GetAllAppointments = async (req, res) => {
     try {
         const { id } = req.user;
         const { search, type, status, ...queryKeys } = req.query;
+        // queryKeys.status = 'accepted'
         let populatepaths = ['doctorId', 'userId'];
-        let selectField = ['name email phone location _id img specialization', 'name email phone location _id img age'];
+        let selectField = ['name email phone location _id img specialization appointment_fee', 'name email phone location _id img age'];
         if (req.user?.role === 'DOCTOR') {
             populatepaths = 'userId'
-            selectField = 'name email phone location _id img age'
+            selectField = 'name email phone location _id img '
             queryKeys.doctorId = id
         } else if (req.user?.role === 'USER') {
             queryKeys.userId = id
             populatepaths = 'doctorId'
-            selectField = 'name email phone location _id img specialization'
+            selectField = 'name email phone location _id img specialization appointment_fee'
         }
         const searchKey = {}
         if (search) searchKey.name = search
         if (status) {
             queryKeys.status = status
-        } else if (type && type === 'past') {//if (type && type === 'upcoming')
+        }
+        if (type && type === 'past') {//if (type && type === 'upcoming')
             queryKeys.date = { $lt: new Date().toISOString() }
         } else if (type && type === 'weekly') {
             queryKeys.date = {
@@ -156,10 +159,11 @@ const GetAllAppointments = async (req, res) => {
         } else if (type && type === 'today') {
             queryKeys.date = { $in: new Date().toISOString().split('T')[0] }
         } else {
-            queryKeys.date = { $gte: new Date().toISOString() }
+            queryKeys.date = { $gte: new Date().toISOString().split('T')[0] }
+
         }
         if (!queryKeys.sort) {
-            queryKeys.sort = 'createdAt'
+            queryKeys.sort = 'updatedAt'
             queryKeys.order = 'desc'
         }
         const result = await Queries(Appointment, queryKeys, searchKey, populatePath = populatepaths, selectFields = selectField);
@@ -224,8 +228,8 @@ const UpdateAppointmentStatus = async (req, res) => {
             return res.status(403).send({ success: false, message: "can't reject appointment after payment" });
         }
         const result = await Appointment.updateOne({ _id: appointmentId }, { $set: { status } });
-        await CreateNotification({ userId: Appointments.userId, doctorId: Appointments.doctorId, appointmentId: appointmentId, message: req?.body?.notes || `Appointment ${status}`, body: `${role} Canceled the appointments request` }, req.user);
-        res.status(200).send({ success: true, data: result, message: 'Appointment Status Updated Successfully' });
+        await CreateNotification({ userId: Appointments.userId, doctorId: Appointments.doctorId, appointmentId: appointmentId, message: req?.body?.notes || `Appointment ${status}`, body: `${role} ${status} the appointments request`, type: 'appointment' }, req.user);
+        res.status(200).send({ success: true, data: result, message: `Appointment ${status} Successfully` });
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
     }

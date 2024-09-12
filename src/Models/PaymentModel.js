@@ -37,10 +37,10 @@ const PaymentSchema = new Schema({
     },
     AppointmentId: {
         type: Schema.Types.ObjectId,
-        ref: 'Appointment',
+        ref: 'appointment',
         required: [true, 'Appointment is required'],
     }
-})
+}, { timestamps: true });
 PaymentSchema.pre('save', function (next) {
     if (this.payment_doctor) {
         this.doctor_payment = this.amount - (this.amount * 0.03);

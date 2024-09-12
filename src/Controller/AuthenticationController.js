@@ -15,6 +15,7 @@ const { generateTimeSlots } = require("../utils/GenarateTime");
 const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 const checkMissingDays = require("../utils/AvailableForValidation");
 const Appointment = require("../Models/AppointmentModel");
+const getAgeFromDate = require("../utils/getAgeFromDate");
 // Clear Cookie
 
 
@@ -122,6 +123,12 @@ const SignIn = async (req, res) => {
             User.findOne({ email: email }),
             Doctor.findOne({ email: email })
         ])
+        if (user && user?.block) {
+            return res.status(400).send({ success: false, message: "your account has been blocked" });
+        }
+        if (doctor && doctor?.block) {
+            return res.status(400).send({ success: false, message: "your account has been blocked" });
+        }
         if (user || doctor) {
             let result
             if (user) {
@@ -141,6 +148,9 @@ const SignIn = async (req, res) => {
                     await code.save();
                     return res.status(400).send({ success: false, data: user || doctor, message: "please verify your email a verification code sent to your email" });
                 }
+                if (!user && doctor && !doctor?.approved) {
+                    return res.status(400).send({ success: false, data: user || doctor, message: "your account is not approved" });
+                }
                 const userData = {
                     email: user?.email || doctor?.email,
                     phone: user?.phone || doctor?.phone,
@@ -150,7 +160,7 @@ const SignIn = async (req, res) => {
                     access: user?.access || doctor?.access,
                     id: user?._id || doctor?._id
                 }
-                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
+                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 3600000000 });
                 res.status(200).send({
                     success: true, message: 'login successfully', data: user || doctor, token
 
@@ -183,7 +193,7 @@ const DoctorSignIn = async (req, res) => {
                     access: user?.access,
                     id: user?._id
                 }
-                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
+                const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 3600000000 });
                 res.status(200).send({
                     success: true, data: user, token
 
@@ -223,6 +233,10 @@ const UpdateUser = async (req, res) => {
                 if (category) {
                     data.category = JSON.parse(category)
                 }
+                console.log({
+                    ...data,
+                    img: img?.[0]?.path || user?.img,
+                })
                 const result = await User.updateOne({ _id: id }, {
                     $set: {
                         ...data,
@@ -230,7 +244,7 @@ const UpdateUser = async (req, res) => {
 
                     }
                 })
-                if (user?.img) {
+                if (img) {
                     UnlinkFiles([user?.img]);
                 }
                 res.status(200).send({ success: true, data: result, message: 'Profile Updated Successfully' });
@@ -392,7 +406,7 @@ const VerifyCode = async (req, res) => {
                 access: user?.access || doctor?.access,
                 id: user?._id || doctor?._id
             }
-            const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 36000000 });
+            const token = await jwt.sign(userData, ACCESS_TOKEN_SECRET, { expiresIn: 3600000000 });
             const accessToken = await jwt.sign({ code, email }, ACCESS_TOKEN_SECRET, { expiresIn: 600 });
             res.status(200).send({ success: true, accessToken, token, message: `${type || 'user'} verified successfully` })
         } else {
@@ -458,14 +472,21 @@ const GetProfile = async (req, res) => {
         if (role === 'DOCTOR') {
             const result = await Doctor.findOne({ email: email })
             const total_appointments = await Appointment.countDocuments({ doctorId: result?._id, status: "completed" })
+            if (result?._doc?.block === true) {
+                return res.status(403).send({ success: false, message: 'you are blocked by admin' });
+            }
             const data = {
                 ...result?._doc,
+                age: getAgeFromDate(result?._doc?.date_of_birth),
                 total_appointments: total_appointments || 0
             }
             return res.status(200).send({ success: true, data });
         } else {
             const result = await User.findOne({ email: email })
-            return res.status(200).send({ success: true, data: result });
+            if (result?.block === true) {
+                return res.status(403).send({ success: false, message: 'you are blocked by admin' });
+            }
+            return res.status(200).send({ success: true, data: { ...result?._doc, age: getAgeFromDate(result?.date_of_birth), } });
         }
     } catch (error) {
         res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error });
@@ -654,17 +675,20 @@ const updateDoctor = async (req, res) => {
                 if (doctor.license) {
                     filesToDelete.push(doctor.license);
                 }
-                const result = await Doctor.updateOne({ _id: doctorId }, {
-                    $set: {
-                        ...otherInfo,
-                        available_for: available_for_purse,
-                        available_days: Object.keys(data).length === 0 ? doctor.available_days : data,
-                        img: img?.[0]?.path || doctor.img,
-                        license: license?.[0]?.path || doctor.license
-                    }
-                })
+                // name
+                const [result] = await Promise.all([
+                    Doctor.updateOne({ _id: doctorId }, {
+                        $set: {
+                            ...otherInfo,
+                            available_for: available_for_purse,
+                            available_days: Object.keys(data).length === 0 ? doctor.available_days : data,
+                            img: img?.[0]?.path || doctor.img,
+                            license: license?.[0]?.path || doctor.license
+                        }
+                    }),
+                    Appointment.updateMany({ doctorId: doctorId }, { name: otherInfo?.name || doctor?.name }),
+                ])
                 UnlinkFiles(filesToDelete);
-
                 res.status(200).send({ success: true, result, message: 'Doctor updated successfully' });
             } catch (error) {
                 let duplicateKeys = '';

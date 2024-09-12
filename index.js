@@ -19,8 +19,9 @@ const NotificationRoutes = require("./src/routes/NotificationRoutes");
 const PaymentRoutes = require("./src/routes/PaymentRoutes");
 const OverViewRoutes = require("./src/routes/OverView");
 const socketIO = require("socket.io");
-const socketHelper = require("./src/Socket");
-const app = express();
+const { server, app } = require("./src/Socket");
+const callHistoryRoutes = require("./src/routes/CallHistoryRoutes");
+const checkPastPendingAppointments = require("./src/utils/ChekPastPandingAppoinment");
 applyMiddleware(app);
 
 //routes
@@ -37,6 +38,7 @@ app.use('/appointment', AppointmentRoute)
 app.use('/notification', NotificationRoutes)
 app.use('/payment', PaymentRoutes)
 app.use('/overview', OverViewRoutes)
+app.use('/call', callHistoryRoutes)
 
 app.get("/", (req, res) => {
   res.send(`
@@ -58,7 +60,17 @@ app.get("/", (req, res) => {
   `);
 });
 app.use(express.static('uploads'))
+// auto reject appointments
+const startInterval = () => {
+  const appointmentInterval = setInterval(async () => {
+    await checkPastPendingAppointments();
+    clearInterval(appointmentInterval);
+    startInterval();
 
+  }, 3 * 60 * 60 * 1000);
+};
+startInterval();
+// setInterval(checkPastPendingAppointments, 3 * 60 * 60 * 1000);
 app.all("*", (req, res, next) => {
   const error = new Error(`Can't find ${req.originalUrl} on the server`);
   error.status = 404;
@@ -68,21 +80,11 @@ app.all("*", (req, res, next) => {
 // error handling middleware
 app.use(globalErrorHandler);
 
-let server;
+
 const main = async () => {
   await connectDB()
-  server = app.listen(port, '103.161.9.133', () => {
+  server.listen(port, '103.161.9.133', () => {
     console.log(`Server is running on port ${port}`);
   });
-
-  //socket
-  const io = socketIO(server,{
-    cors:{
-      origin: "*"
-    }}
-  )
-
-  socketHelper(io);
-  global.io = io;
 }
 main()

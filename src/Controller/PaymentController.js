@@ -35,10 +35,10 @@ const Payment = async (req, res) => {
 // save payment status to database
 const SavePayment = async (req, res) => {
     try {
-        const newPayment = new PaymentModel(req.body)
+        const newPayment = new PaymentModel({ ...req.body, doctor_amount: req.body?.amount - req.body?.amount * 5 / 100, });
         const [result] = await Promise.all([
             await newPayment.save(),
-            await Appointment.updateOne({ doctorId: req.body?.doctorId, userId: req.body?.userId }, { payment_status: true })
+            await Appointment.updateOne({ _id: req.body?.AppointmentId }, { payment_status: true })
         ])
         res.status(200).send({ success: true, message: "Payment created successfully", data: result });
     } catch (error) {
@@ -55,7 +55,8 @@ const createConnectedAccount = async (req, res) => {
             }
             try {
                 const { id } = req.user;
-                const { bank_info, business_profile, dateOfBirth, address } = req?.body
+                const { data, dateOfBirth } = req?.body
+                const { bank_info, business_profile, address } = JSON.parse(data)
                 const dob = new Date(dateOfBirth);
                 const { kycFront, kycBack } = req.files
                 if (!address?.postal_code || !address?.city || !address?.country) {
@@ -175,15 +176,69 @@ const createConnectedAccount = async (req, res) => {
 }
 
 // transfer money
+// const TransferBallance = async (req, res) => {
+//     try {
+//         if (req?.user?.role !== "ADMIN") {
+//             return res.status(401).send({ success: false, message: "unauthorized access" })
+//         }
+//         const { doctorId } = req.query
+//         const [GetDoctorPayment, existingStripeAccount] = await Promise.all([
+//             PaymentModel.find({ doctorId: doctorId, payment_doctor: false }),
+//             StripeAccountModel.findOne({ doctorId: doctorId })
+//         ])
+//         if (!GetDoctorPayment) {
+//             return res.status(404).send({ success: false, message: "No payment found" })
+//         }
+//         if (!existingStripeAccount) {
+//             return res.status(404).send({ success: false, message: "No stripe account found" })
+//         }
+//         const amount = GetDoctorPayment?.reduce((acc, item) => {
+//             return acc + item.amount
+//         })
+//         const percentage = amount * 5 / 100
+//         const totalPayable = amount - percentage
+//         const transfer = await stripe.transfers.create(
+//             {
+//                 amount: totalPayable * 100,
+//                 currency: "usd",
+//                 destination: existingStripeAccount?.accountInformation?.externalAccountId,
+//             },
+//             {
+//                 stripeAccount: existingStripeAccount?.accountInformation?.stripeAccountId,
+//             }
+//         )
+//         if (transfer.id && payouts.id) {
+//             const result = await PaymentModel.updateMany({ doctorId: doctorId, payment_doctor: false }, { $set: { payment_doctor: true } })
+//             const DoctorPayment = new DoctorPaymentModel({
+//                 doctorId: doctorId,
+//                 amount: totalPayable,
+//                 transferId: transfer.id,
+//                 payoutsId: payouts.id,
+//                 status: "success",
+//                 fee: percentage
+//             })
+//             await DoctorPayment.save()
+//             return res.status(200).send({ success: true, message: "Payment done successfully", data: result })
+//         } else {
+//             return res.status(500).send({ success: false, message: "Internal server error" })
+//         }
+//     } catch (error) {
+//         res.status(500).send({ success: false, message: "Internal server error", ...error })
+//     }
+// }
+// get user payment history
+
+//
 const TransferBallance = async (req, res) => {
     try {
         if (req?.user?.role !== "ADMIN") {
             return res.status(401).send({ success: false, message: "unauthorized access" })
         }
-        const { doctorId } = req.query
-        const [GetDoctorPayment, existingStripeAccount] = await Promise.all([
-            PaymentModel.find({ doctorId: doctorId, payment_doctor: false }),
-            StripeAccountModel.findOne({ doctorId: doctorId })
+        const { doctorId, appointmentId } = req.query
+        const [GetDoctorPayment, existingStripeAccount, doctor] = await Promise.all([
+            Appointment.find({ doctorId: doctorId, _id: appointmentId, doctor_payment: false, status: "completed", payment_status: true }),
+            StripeAccountModel.findOne({ doctorId: doctorId }),
+            Doctor.findOne({ _id: doctorId })
         ])
         if (!GetDoctorPayment) {
             return res.status(404).send({ success: false, message: "No payment found" })
@@ -191,10 +246,11 @@ const TransferBallance = async (req, res) => {
         if (!existingStripeAccount) {
             return res.status(404).send({ success: false, message: "No stripe account found" })
         }
-        const amount = GetDoctorPayment?.reduce((acc, item) => {
-            return acc + item.amount
-        })
-        const percentage = amount * 5 / 100
+        if (!doctor) {
+            return res.status(404).send({ success: false, message: "Doctor not found" })
+        }
+        const amount = doctor?.appointment_fee || 0
+        const percentage = amount * 3 / 100
         const totalPayable = amount - percentage
         const transfer = await stripe.transfers.create(
             {
@@ -225,18 +281,22 @@ const TransferBallance = async (req, res) => {
         res.status(500).send({ success: false, message: "Internal server error", ...error })
     }
 }
-// get user payment history
 const UserGetPaymentHistory = async (req, res) => {
     try {
-        const { search, ...queryKeys } = req.query;
-        const searchKey = {}
-        if (req?.user?.role == "ADMIN") {
-            queryKeys.userId = req?.user?.id
+        const { id } = req.user;
+        const { search, type, status, ...queryKeys } = req.query;
+        let populatepaths = ['doctorId', 'userId', 'AppointmentId'];
+        let selectField = ['name email phone location _id img specialization appointment_fee', 'name email phone location _id img', 'date'];
+        if (req.user?.role === 'DOCTOR') {
+            queryKeys.doctorId = id
+        } else if (req.user?.role === 'USER') {
+            queryKeys.userId = id
         }
-        const result = await Queries(PaymentModel, queryKeys, searchKey);
+        const searchKey = {}
+        const result = await Queries(PaymentModel, queryKeys, searchKey, populatePath = populatepaths, selectFields = selectField);
         res.status(200).send({ success: true, message: "Payment history", ...result })
     } catch (error) {
-        res.status(500).send({ success: false, message: "Internal server error", ...error })
+        res.status(500).send({ success: false, message: error?.message || "Internal server error", ...error })
     }
 }
 // get doctors payment history
@@ -401,6 +461,64 @@ const GetTotalBalance = async (req, res) => {
 //         res.status(500).send({ success: false, message: "Internal server error", ...error })
 //     }
 // }
-module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment, GetMyCard }
+const getStartOfDay = (date) => {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    return start;
+};
+
+const getStartOfWeek = () => {
+    const now = new Date();
+    const startOfWeek = new Date();
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return startOfWeek;
+};
+
+const getStartOfMonth = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+};
+const TransitionHistoryOverview = async (req, res) => {
+    try {
+        if (req.user?.role !== "ADMIN") {
+            return res.status(401).send({ success: false, message: "Forbidden Access" })
+        }
+        const today = getStartOfDay(new Date());
+        const startOfWeek = getStartOfWeek();
+        const startOfMonth = getStartOfMonth();
+        const [totalIncome, todayIncome, weeklyIncome, monthlyIncome] = await Promise.all([
+            PaymentModel.aggregate([
+                { $match: { status: 'success' } },
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ]),
+            PaymentModel.aggregate([
+                { $match: { status: 'success', createdAt: { $gte: today } } },
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ]),
+            PaymentModel.aggregate([
+                { $match: { status: 'success', createdAt: { $gte: startOfWeek } } },
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ]),
+            PaymentModel.aggregate([
+                { $match: { status: 'success', createdAt: { $gte: startOfMonth } } },
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ])
+        ]);
+
+        const data = {
+            totalIncome: totalIncome.length ? totalIncome[0].total : 0,
+            todayIncome: todayIncome.length ? todayIncome[0].total : 0,
+            weeklyIncome: weeklyIncome.length ? weeklyIncome[0].total : 0,
+            monthlyIncome: monthlyIncome.length ? monthlyIncome[0].total : 0
+        };
+
+        res.status(200).json(data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment, GetMyCard, TransitionHistoryOverview }
 
 
