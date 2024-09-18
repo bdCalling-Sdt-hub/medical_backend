@@ -5,9 +5,10 @@ const Doctor = require('../Models/DoctorModel');
 const DoctorPaymentModel = require('../Models/DoctorPayment');
 const PaymentModel = require('../Models/PaymentModel');
 const StripeAccountModel = require('../Models/StripeAccountModel');
-const stripe = require("stripe")(SRTIPE_KEY)
+const stripe = require("stripe")("sk_test_51Jw074LLQHQhmkgVlHliqiOmj6Q7H4Ihf4g2mbSuhua7x02qQJ2ezuTSmeWL5DErKu6wvBw5AIp5sJ2Aza3yINZJ00PWdxsZAC")
 const fs = require("fs");
 const Queries = require('../utils/Queries');
+const { Console } = require('console');
 // create payment intent
 const Payment = async (req, res) => {
     try {
@@ -175,167 +176,171 @@ const SavePayment = async (req, res) => {
 
 //     }
 // }
-const createConnectedAccount = async (req, res) => {
-    try {
-        await uploadFile()(req, res, async function (err) {
-            if (err) {
-                return res.status(400).send({ success: false, message: "Error uploading file" });
-            }
+// const createConnectedAccount = async (req, res) => {
+//     try {
 
-            try {
-                const { id } = req.user;
-                const { data, dateOfBirth } = req.body;
-                const { bank_info, business_profile, address } = JSON.parse(data);
-                const dob = new Date(dateOfBirth);
-                const { kycFront, kycBack } = req.files;
+//         console.log("Creating", req.body)
+//         await uploadFile()(req, res, async function (err) {
+//             if (err) {
+//                 return res.status(400).send({ success: false, message: "Error uploading file" });
+//             }
 
-                // Validate input fields
-                if (!address?.postal_code || !address?.city || !address?.country) {
-                    return res.status(400).send({ success: false, message: "Country, city, and postal code are required" });
-                }
-                if (!kycBack || !kycFront || kycBack.length === 0 || kycFront.length === 0) {
-                    return res.status(400).send({ success: false, message: "Two KYC files are required" });
-                }
-                if (!dateOfBirth || !bank_info || !bank_info?.account_number || !bank_info?.account_holder_name) {
-                    return res.status(400).send({ success: false, message: "Date of birth, business profile, and bank info fields are required" });
-                }
-                const [existingUser, existingAccount] = await Promise.all([
-                    Doctor.findOne({ _id: id }),
-                    StripeAccountModel.findOne({ doctorId: id }),
-                ]);
+//             try {
+//                 const { id } = req.user;
+//                 const { data, dateOfBirth } = req.body;
+//                 const { bank_info, business_profile, address } = JSON.parse(data);
+//                 const dob = new Date(dateOfBirth);
+//                 const { kycFront, kycBack } = req.files;
 
-                if (!existingUser) {
-                    return res.status(404).send({ success: false, message: "Doctor not found" });
-                }
-                if (existingAccount) {
-                    return res.status(200).send({ success: false, message: "Account already exists", data: existingAccount });
-                }
-                let frontFileData, backFileData;
-                try {
-                    frontFileData = fs.readFileSync(kycFront[0]?.path);
-                    backFileData = fs.readFileSync(kycBack[0]?.path);
-                } catch (fileError) {
-                    return res.status(500).send({ success: false, message: "Error reading KYC files", error: fileError.message });
-                }
-                let frontFilePart, backFilePart;
-                try {
-                    frontFilePart = await stripe.files.create({
-                        purpose: "identity_document",
-                        file: {
-                            data: frontFileData,
-                            name: kycFront[0]?.filename,
-                            type: kycFront[0]?.mimetype,
-                        },
-                    });
-                } catch (stripeError) {
-                    return res.status(500).send({ success: false, message: "Error creating front KYC file with Stripe", error: stripeError.message });
-                }
+//                 // Validate input fields
+//                 if (!address?.postal_code || !address?.city || !address?.country) {
+//                     return res.status(400).send({ success: false, message: "Country, city, and postal code are required" });
+//                 }
+//                 if (!kycBack || !kycFront || kycBack.length === 0 || kycFront.length === 0) {
+//                     return res.status(400).send({ success: false, message: "Two KYC files are required" });
+//                 }
+//                 if (!dateOfBirth || !bank_info || !bank_info?.account_number || !bank_info?.account_holder_name) {
+//                     return res.status(400).send({ success: false, message: "Date of birth, business profile, and bank info fields are required" });
+//                 }
 
-                try {
-                    backFilePart = await stripe.files.create({
-                        purpose: "identity_document",
-                        file: {
-                            data: backFileData,
-                            name: kycBack[0]?.filename,
-                            type: kycBack[0]?.mimetype,
-                        },
-                    });
-                } catch (stripeError) {
-                    return res.status(500).send({ success: false, message: "Error creating back KYC file with Stripe", error: stripeError.message });
-                }
-                let token;
-                try {
-                    token = await stripe.tokens.create({
-                        account: {
-                            individual: {
-                                dob: {
-                                    day: dob.getDate(),
-                                    month: dob.getMonth() + 1,
-                                    year: dob.getFullYear(),
-                                },
-                                first_name: existingUser?.name?.split(" ")[0] || 'Unknown',
-                                last_name: existingUser?.name?.split(" ")[1] || 'Unknown',
-                                email: existingUser?.email,
-                                phone: '+880000000000',// existingUser?.phone ||
-                                address: {
-                                    city: address.city,
-                                    country: address.country,
-                                    line1: address.line1,
-                                    postal_code: address.postal_code,
-                                },
-                                verification: {
-                                    document: {
-                                        front: frontFilePart.id,
-                                        back: backFilePart.id,
-                                    },
-                                },
-                            },
-                            business_type: "individual",
-                            tos_shown_and_accepted: true,
-                        },
-                    });
-                } catch (stripeError) {
-                    return res.status(500).send({ success: false, message: "Error creating Stripe token", error: stripeError.message });
-                }
 
-                let account;
-                try {
-                    account = await stripe.accounts.create({
-                        type: "custom",
-                        account_token: token.id,
-                        capabilities: {
-                            card_payments: { requested: true },
-                            transfers: { requested: true },
-                        },
-                        business_profile: {
-                            mcc: "5970",
-                            name: business_profile.business_name || existingUser.name || 'Unknown',
-                            url: business_profile.website || "www.example.com",
-                        },
-                        external_account: {
-                            object: "bank_account",
-                            account_holder_name: bank_info.account_holder_name,
-                            account_holder_type: bank_info.account_holder_type,
-                            account_number: bank_info.account_number,
-                            country: bank_info.country,
-                            currency: bank_info.currency,
-                        },
-                    });
-                } catch (stripeError) {
-                    return res.status(500).send({ success: false, message: "Error creating Stripe account", error: stripeError.message });
-                }
+//                 const [existingUser, existingAccount] = await Promise.all([
+//                     Doctor.findOne({ _id: id }),
+//                     StripeAccountModel.findOne({ doctorId: id }),
+//                 ]); 
 
-                // Save account information if account creation was successful
-                if (account.id && account.external_accounts.data.length) {
-                    const accountInformation = {
-                        stripeAccountId: account.id,
-                        externalAccountId: account.external_accounts?.data[0].id,
-                        status: true
-                    };
-                    const newStripeAccount = new StripeAccountModel({
-                        name: existingUser?.name || 'Unknown',
-                        email: existingUser?.email,
-                        doctorId: id,
-                        stripeAccountId: account.id,
-                        kycBack: kycBack[0].path,
-                        kycFront: kycFront[0].path,
-                        address: address,
-                        accountInformation: accountInformation
-                    });
-                    const result = await newStripeAccount.save();
-                    return res.status(200).send({ success: true, message: "Account created successfully", data: result });
-                } else {
-                    return res.status(500).send({ success: false, message: "Failed to create the Stripe account" });
-                }
+//                 if (!existingUser) {
+//                     return res.status(404).send({ success: false, message: "Doctor not found" });
+//                 }
+//                 if (existingAccount) {
+//                     return res.status(200).send({ success: false, message: "Account already exists", data: existingAccount });
+//                 }
+//                 let frontFileData, backFileData;
+//                 try {
+//                     frontFileData = fs.readFileSync(kycFront[0]?.path);
+//                     backFileData = fs.readFileSync(kycBack[0]?.path);
+//                 } catch (fileError) {
+//                     return res.status(500).send({ success: false, message: "Error reading KYC files", error: fileError.message });
+//                 }
+//                 let frontFilePart, backFilePart;
+//                 try {
+//                     frontFilePart = await stripe.files.create({
+//                         purpose: "identity_document",
+//                         file: {
+//                             data: frontFileData,
+//                             name: kycFront[0]?.filename,
+//                             type: kycFront[0]?.mimetype,
+//                         },
+//                     });
+//                 } catch (stripeError) {
+//                     return res.status(500).send({ success: false, message: "Error creating front KYC file with Stripe", error: stripeError.message });
+//                 }
 
-            } catch (error) {
-                return res.status(500).send({ success: false, message: "Internal server error", error: error.message });
-            }
-        });
-    } catch (error) {
-        return res.status(500).send({ success: false, message: "Internal server error", error: error.message });
-    }
-};
+//                 try {
+//                     backFilePart = await stripe.files.create({
+//                         purpose: "identity_document",
+//                         file: {
+//                             data: backFileData,
+//                             name: kycBack[0]?.filename,
+//                             type: kycBack[0]?.mimetype,
+//                         },
+//                     });
+//                 } catch (stripeError) {
+//                     return res.status(500).send({ success: false, message: "Error creating back KYC file with Stripe", error: stripeError.message });
+//                 }
+//                 let token;
+//                 try {
+//                     token = await stripe.tokens.create({
+//                         account: {
+//                             individual: {
+//                                 dob: {
+//                                     day: dob.getDate(),
+//                                     month: dob.getMonth() + 1,
+//                                     year: dob.getFullYear(),
+//                                 },
+//                                 first_name: existingUser?.name?.split(" ")[0] || 'Unknown',
+//                                 last_name: existingUser?.name?.split(" ")[1] || 'Unknown',
+//                                 email: existingUser?.email,
+//                                 phone: '+880000000000',// existingUser?.phone ||
+//                                 address: {
+//                                     city: address.city,
+//                                     country: address.country,
+//                                     line1: address.line1,
+//                                     postal_code: address.postal_code,
+//                                 },
+//                                 verification: {
+//                                     document: {
+//                                         front: frontFilePart.id,
+//                                         back: backFilePart.id,
+//                                     },
+//                                 },
+//                             },
+//                             business_type: "individual",
+//                             tos_shown_and_accepted: true,
+//                         },
+//                     });
+//                 } catch (stripeError) {
+//                     return res.status(500).send({ success: false, message: "Error creating Stripe token", error: stripeError.message });
+//                 }
+
+//                 let account;
+//                 try {
+//                     account = await stripe.accounts.create({
+//                         type: "custom",
+//                         account_token: token.id,
+//                         capabilities: {
+//                             card_payments: { requested: true },
+//                             transfers: { requested: true },
+//                         },
+//                         business_profile: {
+//                             mcc: "5970",
+//                             name: business_profile.business_name || existingUser.name || 'Unknown',
+//                             url: business_profile.website || "www.example.com",
+//                         },
+//                         external_account: {
+//                             object: "bank_account",
+//                             account_holder_name: bank_info.account_holder_name,
+//                             account_holder_type: bank_info.account_holder_type,
+//                             account_number: bank_info.account_number,
+//                             country: bank_info.country,
+//                             currency: bank_info.currency,
+//                         },
+//                     });
+//                 } catch (stripeError) {
+//                     return res.status(500).send({ success: false, message: "Error creating Stripe account", error: stripeError.message });
+//                 }
+
+//                 // Save account information if account creation was successful
+//                 if (account.id && account.external_accounts.data.length) {
+//                     const accountInformation = {
+//                         stripeAccountId: account.id,
+//                         externalAccountId: account.external_accounts?.data[0].id,
+//                         status: true
+//                     };
+//                     const newStripeAccount = new StripeAccountModel({
+//                         name: existingUser?.name || 'Unknown',
+//                         email: existingUser?.email,
+//                         doctorId: id,
+//                         stripeAccountId: account.id,
+//                         kycBack: kycBack[0].path,
+//                         kycFront: kycFront[0].path,
+//                         address: address,
+//                         accountInformation: accountInformation
+//                     });
+//                     const result = await newStripeAccount.save();
+//                     return res.status(200).send({ success: true, message: "Account created successfully", data: result });
+//                 } else {
+//                     return res.status(500).send({ success: false, message: "Failed to create the Stripe account" });
+//                 }
+
+//             } catch (error) {
+//                 return res.status(500).send({ success: false, message: "Internal server error", error: error.message });
+//             }
+//         });
+//     } catch (error) {
+//         return res.status(500).send({ success: false, message: "Internal server error", error: error.message });
+//     }
+// };
 
 // transfer money
 // const TransferBallance = async (req, res) => {
@@ -478,7 +483,6 @@ const GetDoctorPaymentHistory = async (req, res) => {
         res.status(500).send({ success: false, message: "Internal server error", ...error })
     }
 }
-
 // see available payment 
 const GetAvailablePayment = async (req, res) => {
     try {
@@ -681,6 +685,200 @@ const TransitionHistoryOverview = async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 }
+
+
+// -------------------------------------------
+const createConnectedAccount = async (req, res) => {
+    try {
+        await uploadFile()(req, res, async (err) => {
+            if (err) {
+                return res.status(400).send({ success: false, message: "Error uploading file" });
+            }
+
+            const { id } = req.user;
+            const { data, dateOfBirth } = req.body;
+            console.log("Creating", data, dateOfBirth);
+            const { bank_info, business_profile, address } = JSON.parse(data);
+            const dob = new Date(dateOfBirth);
+            const { kycFront, kycBack } = req.files;
+
+            const validationError = validateInputs(address, kycFront, kycBack, dateOfBirth, bank_info);
+            if (validationError) return res.status(400).send(validationError);
+
+            try {
+                const [existingUser, existingAccount] = await checkUserAndAccount(id);
+               
+                if (!existingUser) return res.status(404).send({ success: false, message: "Doctor not found" });
+                if (existingAccount) return res.status(200).send({ success: false, message: "Account already exists", data: existingAccount });
+
+                const { frontFilePart, backFilePart } = await handleKYCFiles(kycFront, kycBack);
+                const token = await createStripeToken(existingUser, dob, address, frontFilePart, backFilePart);
+
+                console.log("token", token);
+                
+                const account = await createStripeAccount(token, bank_info, business_profile, existingUser);
+                console.log("account", account);
+
+                if (account.id && account.external_accounts.data.length) {
+                    const result = await saveStripeAccount(account, existingUser, id, address, kycFront, kycBack, dob);
+                    return res.status(200).send({ success: true, message: "Account created successfully", data: result });
+                } else {
+                    return res.status(500).send({ success: false, message: "Failed to create the Stripe account" });
+                }
+
+            } catch (error) {
+                return res.status(500).send({ success: false, message: "Internal server error", error: error.message });
+            }
+        });
+    } catch (error) {
+        return res.status(500).send({ success: false, message: "Internal server error", error: error.message });
+    }
+};
+
+const validateInputs = (address, kycFront, kycBack, dateOfBirth, bank_info) => {
+    if (!address?.postal_code || !address?.city || !address?.country) {
+        return { success: false, message: "Country, city, and postal code are required" };
+    }
+    if (!kycBack || !kycFront || kycBack.length === 0 || kycFront.length === 0) {
+        return { success: false, message: "Two KYC files are required" };
+    }
+    if (!dateOfBirth || !bank_info || !bank_info?.account_number || !bank_info?.account_holder_name) {
+        return { success: false, message: "Date of birth, business profile, and bank info fields are required" };
+    }
+    return null;
+};
+
+const checkUserAndAccount = async (doctorId) => {
+    return Promise.all([
+        Doctor.findOne({ _id: doctorId }),
+        StripeAccountModel.findOne({ doctorId }),
+    ]);
+};
+
+const handleKYCFiles = async (kycFront, kycBack) => {
+    let frontFileData, backFileData;
+    try {
+        frontFileData = fs.readFileSync(kycFront[0]?.path);
+        backFileData = fs.readFileSync(kycBack[0]?.path);
+    } catch (fileError) {
+        throw new Error("Error reading KYC files: " + fileError.message);
+    }
+
+    const frontFilePart = await createStripeFile(frontFileData, kycFront[0]);
+    const backFilePart = await createStripeFile(backFileData, kycBack[0]);
+
+    return { frontFilePart, backFilePart };
+};
+
+const createStripeFile = async (fileData, file) => {
+    try {
+        return await stripe.files.create({
+            purpose: "identity_document",
+            file: {
+                data: fileData,
+                name: file.filename,
+                type: file.mimetype,
+            },
+        });
+    } catch (error) {
+        throw new Error("Error creating KYC file with Stripe: " + error.message);
+    }
+};
+
+const createStripeToken = async (user, dob, address, frontFilePart, backFilePart) => {
+    try {
+        return await stripe.tokens.create({
+            account: {
+                individual: {
+                    dob: {
+                        day: dob.getDate(),
+                        month: dob.getMonth() + 1,
+                        year: dob.getFullYear(),
+                    },
+                    first_name: user?.name?.split(" ")[0] || 'Unknown',
+                    last_name: user?.name?.split(" ")[1] || 'Unknown',
+                    email: user?.email,
+                    phone: '+880000000000', // Replace with actual phone if available
+                    address: {
+                        city: address.city,
+                        country: address.country,
+                        line1: address.line1,
+                        postal_code: address.postal_code,
+                    },
+                    verification: {
+                        document: {
+                            front: frontFilePart.id,
+                            back: backFilePart.id,
+                        },
+                    },
+                },
+                business_type: "individual",
+                tos_shown_and_accepted: true,
+            },
+        });
+    } catch (error) {
+        throw new Error("Error creating Stripe token: " + error.message);
+    }
+};
+
+const createStripeAccount = async (token, bank_info, business_profile, user) => {
+    try {
+        const resData = await stripe.accounts.create({
+            type: "custom",
+            account_token: token.id,
+            capabilities: {
+                card_payments: { requested: true },
+                transfers: { requested: true },
+            },
+            business_profile: {
+                mcc: "5970", // Ensure this MCC is correct for your business type
+                name: business_profile.business_name || user.name || 'Unknown',
+                url: business_profile.website || "www.example.com",
+            },
+            external_account: {
+                object: "bank_account",
+                account_holder_name: bank_info.account_holder_name,
+                account_holder_type: bank_info.account_holder_type,
+                account_number: bank_info.account_number,
+                country: bank_info.country,
+                currency: bank_info.currency,
+            },
+        });
+
+        return resData; // Return the response data
+    } catch (error) {
+        console.error("Error creating Stripe account:", error);
+        throw new Error("Error creating Stripe account: " + error.message);
+    }
+};
+
+const saveStripeAccount = async (account, user, doctorId, address, kycFront, kycBack, dob) => {
+    const formattedAddress = `${address.line1}, ${address.city}, ${address.country}, ${address.postal_code}`;
+    const dobFormatted = dob.toISOString(); // Convert date to ISO string
+
+    const accountInformation = {
+        stripeAccountId: account.id,
+        externalAccountId: account.external_accounts?.data[0].id,
+        status: true,
+    };
+
+    const newStripeAccount = new StripeAccountModel({
+        name: user?.name || 'Unknown',
+        email: user?.email,
+        doctorId: doctorId,
+        stripeAccountId: account.id,
+        kycBack: kycBack[0].path,
+        kycFront: kycFront[0].path,
+        address: formattedAddress, // Use formatted address
+        dob: dobFormatted, // Make sure dob is included
+        accountInformation: accountInformation,
+    });
+
+    return await newStripeAccount.save();
+};
+
+
+
 module.exports = { Payment, SavePayment, createConnectedAccount, TransferBallance, UserGetPaymentHistory, GetDoctorPaymentHistory, GetAvailablePayment, GetMyCard, TransitionHistoryOverview }
 
 

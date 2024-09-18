@@ -3,7 +3,7 @@ const applyMiddleware = require("./src/middlewares");
 const connectDB = require("./src/db/connectDB");
 const { PORT } = require("./src/config/defaults");
 const express = require("express")
-const port = PORT || 5000;
+const port = PORT || 6001;
 const AuthRoute = require("./src/routes/AuthenticationRoute");
 const globalErrorHandler = require("./src/utils/globalErrorHandler");
 const DoctorsRoute = require("./src/routes/DoctorsRoute");
@@ -83,8 +83,8 @@ app.use(globalErrorHandler);
 
 const main = async () => {
   await connectDB()
-  server.listen(port, '103.161.9.133', () => {
-    console.log(`Server is running on port ${port}`);
+  server.listen(port,process.env.LOCAL_CLIENT, () => {
+    console.log(`Server is running on port http://192.168.10.152:${port}`);
   });
 }
 main()
