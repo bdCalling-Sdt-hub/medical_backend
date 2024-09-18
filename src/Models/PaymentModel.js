@@ -39,6 +39,10 @@ const PaymentSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'appointment',
         required: [true, 'Appointment is required'],
+    },
+    appointmentDate: {
+        type: Date,
+        required: [true, 'Appointment Date is required'],
     }
 }, { timestamps: true });
 PaymentSchema.pre('save', function (next) {

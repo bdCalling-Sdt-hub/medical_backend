@@ -25,7 +25,7 @@ const GetCallHistory = async (req, res) => {
         const populatePaths = ["doctorId", "userId"]
         const selectFields = ["name email phone location _id img specialization", "name email phone location _id img age"]
         const searchKey = {}
-        const result = await Queries(CallHistory, queryKeys, searchKey, populatePath = populatePaths, selectFields = selectFields)
+        const result = await Queries(CallHistory, queryKeys, searchKey, populatePath = populatePaths, selectField = selectFields)
         return res.status(200).send({ ...result })
     } catch (error) {
         return res.status(500).send({ success: false, message: error.message || 'Internal server error' })
