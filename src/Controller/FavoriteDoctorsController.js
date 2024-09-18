@@ -13,7 +13,7 @@ const GetFavoriteDoctors = async (req, res) => {
         const result = await Queries(FavoriteDoctorModel, queryKeys, searchKey, populatePath = "doctorId");
         res.status(200).send({ ...result });
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error } })
+        res.status(500).send({ success: false, ...error, message: error?.message || 'Internal server error', })
     }
 }
 // add favorite doctors
@@ -32,7 +32,7 @@ const AddRemoveFavoriteDoctor = async (req, res) => {
         }
 
     } catch (error) {
-        res.status(500).send({ success: false, error: { message: 'Internal server error', error } })
+        res.status(500).send({ success: false, message: error?.message || 'Internal server error', ...error })
     }
 }
 module.exports = { GetFavoriteDoctors, AddRemoveFavoriteDoctor }

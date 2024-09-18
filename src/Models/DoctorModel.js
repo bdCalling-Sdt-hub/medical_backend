@@ -4,7 +4,36 @@ const HashPassword = require('../utils/HashPassword');
 //     startTime: { type: String, required: true },
 //     endTime: { type: String, required: true }
 // }, { _id: false });
-
+const available_forSchema = new Schema({
+    monday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
+    },
+    tuesday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
+    },
+    wednesday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
+    },
+    thursday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
+    },
+    friday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
+    },
+    saturday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
+    },
+    sunday: {
+        type: String,
+        enum: ['ONLINE', 'OFFLINE', 'WEEKEND'],
+    },
+}, { _id: false })
 const AvailabilitySchema = new Schema({
     monday: {
         type: [String],
@@ -39,11 +68,17 @@ const AvailabilitySchema = new Schema({
 const DoctorModel = new Schema({
     'img': {
         type: String,
-        required: false
+        required: false,
+        default: null
     },
     "name": {
         type: String,
         required: [true, 'name is required'],
+    },
+    "appointment_fee": {
+        type: Number,
+        required: [true, 'Number is required'],
+        default: 0
     },
     "email": {
         type: String,
@@ -89,6 +124,12 @@ const DoctorModel = new Schema({
         enum: ['DOCTOR', 'DOCTOR', 'ADMIN'],
         default: 'DOCTOR'
     },
+    verified: {
+        type: Boolean,
+        required: true,
+        enum: [true, false],
+        default: false
+    },
     "access": {
         type: Number,
         required: true,
@@ -113,13 +154,17 @@ const DoctorModel = new Schema({
         }
     },
     "available_for": {
-        type: String,
-        enum: ['ONLINE', 'OFFLINE'],
-        required: [true, 'availableFor is required'],
+        type: available_forSchema,
+        required: [true, 'available For is required'],
     },
     "license": {
         type: String,
         required: [true, 'license is required'],
+    },
+    "license_no": {
+        type: String,
+        required: [true, 'license no is required'],
+        default: null
     },
     "specialization": {
         type: String,
@@ -142,15 +187,32 @@ const DoctorModel = new Schema({
         required: [true, 'Rating is required'],
         default: 0,
     },
+    // "day_of_weekend": {
+    //     type: String,
+    //     required: [true, 'Day Of Weekend is required'],
+    //     enum: ['sunday', 'saturday', 'friday', 'thursday', 'wednesday', 'tuesday', 'monday'],
+    // },
     "total_rated": {
         type: Number,
         required: [true, 'Rating is required'],
         default: 0,
     },
+    "approved": {
+        type: Boolean,
+        required: true,
+        enum: [true, false],
+        default: false
+    },
+    "desc": {
+        type: String,
+        required: [true, 'desc is required'],
+        default: null
+    }
 }, { timestamps: true });
 
 DoctorModel.pre('save', async function (next) {
     this.email = this.email.toLowerCase();
+    this.specialization = this.specialization.toLowerCase();
     if (this.isModified('password')) {
         try {
             this.password = await HashPassword(this.password);

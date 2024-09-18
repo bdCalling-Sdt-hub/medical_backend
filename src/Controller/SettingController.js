@@ -1,4 +1,5 @@
 const SettingsModel = require("../Models/SettingsModel");
+const FormateRequiredFieldMessage = require("../utils/FormateRequiredFieldMessage");
 
 //create setting
 const GetSettings = async (req, res) => {
@@ -9,14 +10,14 @@ const GetSettings = async (req, res) => {
             return res.send({ success: true, data: result })
         } else {
             return res.send({
-                success: false, data: {
+                success: true, data: {
                     "name": type,
                     "value": "",
                 }
             })
         }
     } catch (error) {
-        res.send({ success: false, ...error, message: 'Internal Server Error' })
+        res.send({ success: false, ...error, message: error?.message || 'Internal server error', })
     }
 }
 // update setting 
@@ -31,16 +32,22 @@ const UpdateSettings = async (req, res) => {
             const result = await SettingsModel.updateOne({ name }, { $set: { value } })
             return res.send({ success: true, data: result, message: `${name} Updated Successfully` })
         } else {
-            const result = await SettingsModel.create({ name, value })
-            res.send({ success: true, data: result, message: `${name} Updated Successfully` })
+            const settingData = new SettingsModel({ name, value })
+            const result = await settingData.save()
+            return res.send({ success: true, data: result, message: `${name} Updated Successfully` })
         }
     } catch (error) {
-        let duplicateKeys = [];
+        let duplicateKeys = '';
         if (error?.keyValue) {
             duplicateKeys = FormateErrorMessage(error);
+            error.duplicateKeys = duplicateKeys;
         }
-        error.duplicateKeys = duplicateKeys;
-        res.send({ success: false, ...error, message: 'Internal Server Error' })
+        let requiredField = []
+        if (error?.errors) {
+            requiredField = FormateRequiredFieldMessage(error?.errors);
+            error.requiredField = requiredField;
+        }
+        res.status(500).send({ success: false, message: requiredField[0] || duplicateKeys || 'Internal server error', ...error });/*  */
     }
 }
 module.exports = { UpdateSettings, GetSettings }

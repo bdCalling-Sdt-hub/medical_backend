@@ -32,11 +32,16 @@ const AppointmentSchema = new Schema({
         type: String,
         required: [true, 'Status Id is required'],
         default: 'pending',
-        enum: ['pending', 'accepted', 'rejected','completed']
+        enum: ['pending', 'accepted', 'rejected', 'completed']
     },
     reason: {
         type: String,
         required: [true, 'Reason is required']
+    },
+    appointment_type: {
+        type: String,
+        required: [true, 'Appointment Type is required'],
+        enum: ['ONLINE', 'OFFLINE']
     },
     desc: {
         type: String,
@@ -44,12 +49,33 @@ const AppointmentSchema = new Schema({
     },
     prescription: {
         type: [String],
+        default: []
     },
     review: {
         type: Boolean,
         required: [true, 'Review is required'],
         enum: [true, false],
         default: false,
+    },
+    notes: {
+        type: String
+    },
+    reSchedule: {
+        type: Boolean,
+        default: false
+    },
+    reSchedule_by: {
+        type: String,
+        enum: ['DOCTOR', 'USER'],
+    },
+    payment_status: {
+        type: Boolean,
+        default: false
+    },
+    doctor_payment: {
+        type: Boolean,
+        required: [true, 'Doctor Payment is required'],
+        default: false
     }
 }, { timestamps: true });
 

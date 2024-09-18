@@ -10,5 +10,9 @@ const CategoryModel = new Schema({
         required: [true, 'image is required']
     },
 }, { timestamps: true });
+CategoryModel.pre('save', async function (next) {
+    this.name = this.name.toLowerCase();
+    next();
+});
 const Category = model('category', CategoryModel);
 module.exports = Category
